@@ -7,6 +7,12 @@ const WECHAT_API_BASE = 'https://api.weixin.qq.com';
 const APPID = process.env.WECHAT_APPID || '';
 const SECRET = process.env.WECHAT_SECRET || '';
 
+// 配置验证
+if (!APPID || !SECRET) {
+  logger.error('微信小程序配置缺失：请在 .env 文件中配置 WECHAT_APPID 和 WECHAT_SECRET');
+  logger.error('参考 .env.example 文件获取配置模板');
+}
+
 // 微信API响应接口
 export interface WechatCode2SessionResponse {
   openid: string;
@@ -33,6 +39,11 @@ export class WechatUtil {
    * 使用code换取session_key和openid
    */
   static async code2Session(code: string): Promise<WechatCode2SessionResponse> {
+    // 在调用微信API前检查配置
+    if (!this.checkConfig()) {
+      throw new Error('微信小程序配置错误，请检查 .env 文件中的 WECHAT_APPID 和 WECHAT_SECRET 配置');
+    }
+    
     try {
       const response = await axios.get(`${WECHAT_API_BASE}/sns/jscode2session`, {
         params: {
@@ -132,10 +143,12 @@ export class WechatUtil {
       const key = crypto.scryptSync(SECRET, 'salt', 32);
       const iv = crypto.randomBytes(16);
       
-      const cipher = crypto.createCipher(algorithm, key);
+      // 使用现代化的createCipheriv方法
+      const cipher = crypto.createCipheriv(algorithm, key, iv);
       let encrypted = cipher.update(data, 'utf8', 'hex');
       encrypted += cipher.final('hex');
       
+      // 返回格式：iv:加密数据
       return iv.toString('hex') + ':' + encrypted;
     } catch (error) {
       logger.error('加密敏感数据失败:', error);
@@ -151,11 +164,17 @@ export class WechatUtil {
       const algorithm = 'aes-256-cbc';
       const key = crypto.scryptSync(SECRET, 'salt', 32);
       
+      // 分离IV和加密数据
       const parts = encryptedData.split(':');
+      if (parts.length !== 2) {
+        throw new Error('加密数据格式错误');
+      }
+      
       const iv = Buffer.from(parts[0], 'hex');
       const encrypted = parts[1];
       
-      const decipher = crypto.createDecipher(algorithm, key);
+      // 使用现代化的createDecipheriv方法
+      const decipher = crypto.createDecipheriv(algorithm, key, iv);
       let decrypted = decipher.update(encrypted, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
       
@@ -183,9 +202,21 @@ export class WechatUtil {
    */
   static checkConfig(): boolean {
     if (!APPID || !SECRET) {
-      logger.error('微信小程序配置缺失: APPID或SECRET未设置');
+      logger.error('❌ 微信小程序配置缺失');
+      logger.error('📁 请检查项目根目录是否存在 .env 文件');
+      logger.error('📋 如果不存在，请复制 .env.example 为 .env 并填入正确配置');
+      logger.error('🔑 WECHAT_APPID 和 WECHAT_SECRET 需要从微信公众平台获取');
+      logger.error('🌐 微信公众平台地址: https://mp.weixin.qq.com/');
+      logger.error(`📊 当前配置状态: APPID=${APPID ? '已配置' : '未配置'}, SECRET=${SECRET ? '已配置' : '未配置'}`);
       return false;
     }
+    
+    if (APPID === 'your_wechat_miniprogram_appid' || SECRET === 'your_wechat_miniprogram_secret') {
+      logger.error('❌ 微信小程序配置使用了示例值，请填入真实配置');
+      return false;
+    }
+    
+    logger.info('✅ 微信小程序配置检查通过');
     return true;
   }
 }

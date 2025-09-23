@@ -1,7 +1,7 @@
 import { WechatUtil } from '@/utils/wechat';
 import { JWTUtil } from '@/utils/jwt';
 import { userService } from '@/services/userService';
-import { RedisCache } from '@/config/redis';
+// 移除Redis依赖，JWT完全无状态
 import { logger } from '@/utils/logger';
 import { AuthenticationError, WechatAPIError } from '@/middleware/errorHandler';
 
@@ -58,13 +58,11 @@ class AuthService {
           unionid,
           nickname: userInfo?.nickName || '微信用户',
           avatar_url: userInfo?.avatarUrl || '',
-          session_key: WechatUtil.encryptSensitiveData(session_key),
         });
         logger.info(`创建新用户: ${openid.substring(0, 8)}***`);
       } else {
-        // 更新现有用户的session_key和登录时间
+        // 更新现有用户的登录时间和用户信息
         await userService.updateUser(user.id, {
-          session_key: WechatUtil.encryptSensitiveData(session_key),
           last_login_at: new Date(),
           // 如果有新的用户信息，也更新
           ...(userInfo && {
@@ -75,30 +73,15 @@ class AuthService {
         logger.info(`用户登录: ${openid.substring(0, 8)}***`);
       }
 
-      // 4. 生成JWT token
+      // 4. 生成JWT token（无状态，不存储到数据库）
       const tokenPair = JWTUtil.generateTokenPair({
         userId: user.id,
         openid: user.openid,
       });
 
-      // 5. 存储刷新令牌到数据库
-      await userService.updateUser(user.id, {
-        refresh_token: tokenPair.refreshToken,
-        token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7天后过期
-      });
+      // JWT是完全无状态的，不需要任何缓存
 
-      // 6. 缓存用户会话信息
-      await RedisCache.set(
-        `user_session:${user.id}`,
-        {
-          userId: user.id,
-          openid: user.openid,
-          sessionKey: session_key,
-        },
-        7 * 24 * 60 * 60 // 7天
-      );
-
-      // 7. 返回登录结果
+      // 6. 返回登录结果（JWT完全无状态）
       return {
         accessToken: tokenPair.accessToken,
         refreshToken: tokenPair.refreshToken,
@@ -123,7 +106,7 @@ class AuthService {
   }
 
   /**
-   * 刷新访问令牌
+   * 刷新访问令牌（简化版，JWT无状态）
    */
   async refreshToken(userId: number, openid: string): Promise<Omit<LoginResult, 'user'>> {
     try {
@@ -133,21 +116,10 @@ class AuthService {
         throw new AuthenticationError('用户信息不匹配');
       }
 
-      // 2. 检查刷新令牌是否过期
-      if (user.token_expires_at && new Date() > user.token_expires_at) {
-        throw new AuthenticationError('刷新令牌已过期，请重新登录');
-      }
-
-      // 3. 生成新的令牌对
+      // 2. 生成新的令牌对（无状态，不存储到数据库）
       const tokenPair = JWTUtil.generateTokenPair({
         userId: user.id,
         openid: user.openid,
-      });
-
-      // 4. 更新数据库中的刷新令牌
-      await userService.updateUser(user.id, {
-        refresh_token: tokenPair.refreshToken,
-        token_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       });
 
       logger.info(`令牌刷新成功: 用户${userId}`);
@@ -168,15 +140,8 @@ class AuthService {
    */
   async logout(userId: number): Promise<void> {
     try {
-      // 1. 清除数据库中的刷新令牌
-      await userService.updateUser(userId, {
-        refresh_token: null,
-        token_expires_at: null,
-      });
-
-      // 2. 清除Redis缓存
-      await RedisCache.del(`user_session:${userId}`);
-
+      // JWT完全无状态，登出只需要前端丢弃token即可
+      // 这里可以记录登出日志，但不需要任何服务端状态清理
       logger.info(`用户登出: ${userId}`);
     } catch (error) {
       logger.error('用户登出失败:', error);
@@ -184,30 +149,8 @@ class AuthService {
     }
   }
 
-  /**
-   * 验证用户会话
-   */
-  async validateSession(userId: number): Promise<boolean> {
-    try {
-      const session = await RedisCache.get(`user_session:${userId}`);
-      return !!session;
-    } catch (error) {
-      logger.error('验证用户会话失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 获取用户会话信息
-   */
-  async getSessionInfo(userId: number): Promise<any> {
-    try {
-      return await RedisCache.get(`user_session:${userId}`);
-    } catch (error) {
-      logger.error('获取用户会话信息失败:', error);
-      return null;
-    }
-  }
+  // JWT无状态设计，不需要会话验证和信息获取方法
+  // 所有用户状态都包含在JWT token中
 }
 
 export const authService = new AuthService();

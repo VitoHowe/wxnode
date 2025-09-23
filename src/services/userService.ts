@@ -12,9 +12,6 @@ interface User {
   phone?: string;
   role_id: number;
   status: number;
-  session_key?: string;
-  refresh_token?: string;
-  token_expires_at?: Date;
   last_login_at?: Date;
   created_at: Date;
   updated_at: Date;
@@ -28,7 +25,6 @@ interface CreateUserParams {
   avatar_url?: string;
   phone?: string;
   role_id?: number;
-  session_key?: string;
 }
 
 // 更新用户参数
@@ -38,9 +34,6 @@ interface UpdateUserParams {
   phone?: string;
   role_id?: number;
   status?: number;
-  session_key?: string;
-  refresh_token?: string | null;
-  token_expires_at?: Date | null;
   last_login_at?: Date;
 }
 
@@ -97,8 +90,7 @@ class UserService {
       nickname = '微信用户',
       avatar_url = '',
       phone,
-      role_id = 1,
-      session_key,
+      role_id = 2, // 默认为普通用户角色
     } = params;
 
     try {
@@ -108,12 +100,29 @@ class UserService {
         throw new ConflictError('用户已存在');
       }
 
+      // 将undefined转换为null，确保数据库兼容性
+      const safeParams = [
+        openid,
+        unionid ?? null,           // undefined -> null
+        nickname,
+        avatar_url,
+        phone ?? null,            // undefined -> null  
+        role_id
+      ];
+
       const sql = `
-        INSERT INTO users (openid, unionid, nickname, avatar_url, phone, role_id, session_key, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        INSERT INTO users (openid, unionid, nickname, avatar_url, phone, role_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
       `;
       
-      const result = await query(sql, [openid, unionid, nickname, avatar_url, phone, role_id, session_key]);
+      logger.info('创建用户参数:', { 
+        openid: openid.substring(0, 8) + '***', 
+        hasUnionid: !!unionid,
+        nickname,
+        role_id 
+      });
+      
+      const result = await query(sql, safeParams);
       
       const newUser = await this.getUserById(result.insertId);
       if (!newUser) {
@@ -146,7 +155,8 @@ class UserService {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) {
           updateFields.push(`${key} = ?`);
-          updateValues.push(value);
+          // 确保null值正确传递给数据库
+          updateValues.push(value === null ? null : value);
         }
       });
 
@@ -158,6 +168,8 @@ class UserService {
       updateValues.push(id);
 
       const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+      
+      logger.debug('更新用户SQL:', { sql, updateFields, userId: id });
       await query(sql, updateValues);
 
       const updatedUser = await this.getUserById(id);
