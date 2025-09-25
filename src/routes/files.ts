@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import { fileController } from '@/controllers/fileController';
 import { authenticateToken } from '@/middleware/auth';
 import { validateRequest, validationSchemas } from '@/middleware/validation';
@@ -10,7 +11,14 @@ const router = Router();
 // 文件上传配置
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, process.env.UPLOAD_PATH || './uploads');
+    const uploadPath = process.env.UPLOAD_PATH || './uploads';
+    
+    // 确保上传目录存在
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
     // 生成唯一文件名
@@ -25,11 +33,27 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50MB
   },
   fileFilter: (req, file, cb) => {
-    // 只允许PDF文件
-    if (file.mimetype === 'application/pdf') {
+    // 支持的文件类型
+    const allowedMimeTypes = [
+      'application/pdf',                    // PDF
+      'application/msword',                 // DOC
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // DOCX
+      'text/plain',                         // TXT
+      'text/markdown',                      // MD
+      'application/vnd.ms-excel',           // XLS
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
+      'text/csv',                           // CSV
+      'application/json',                   // JSON
+    ];
+    
+    // 支持的文件扩展名（作为备用检查）
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.md', '.xlsx', '.xls', '.csv', '.json'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
       cb(null, true);
     } else {
-      cb(new Error('只支持PDF文件上传'));
+      cb(new Error('不支持的文件格式，支持格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON'));
     }
   }
 });
@@ -43,7 +67,7 @@ router.use(authenticateToken);
  *   post:
  *     tags: [文件管理]
  *     summary: 上传题库文件
- *     description: 上传PDF格式的题库文件
+ *     description: 上传题库文件，支持多种格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -59,18 +83,21 @@ router.use(authenticateToken);
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: PDF文件
+ *                 description: 题库文件（支持PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON）
  *               name:
  *                 type: string
  *                 description: 题库名称
  *               description:
  *                 type: string
  *                 description: 题库描述
+ *               type:
+ *                 type: string
+ *                 description: 文件类型（可选，uniapp会自动发送）
  *     responses:
  *       200:
  *         description: 上传成功
  *       400:
- *         description: 文件格式不支持
+ *         description: 文件格式不支持或参数验证失败
  *       401:
  *         description: 未登录
  */

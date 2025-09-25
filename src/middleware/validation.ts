@@ -144,7 +144,8 @@ export const validationSchemas = {
       description: Joi.string().max(500).optional().messages({
         'string.max': '文件描述长度不能超过500个字符',
       }),
-    }),
+      type: Joi.string().optional(), // 允许uniapp发送的type字段
+    }).unknown(true), // 允许其他未知字段
   },
 
   // 题库查询验证

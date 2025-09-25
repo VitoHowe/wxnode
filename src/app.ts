@@ -19,7 +19,7 @@ import fileRoutes from '@/routes/files';
 import questionRoutes from '@/routes/questions';
 
 // 加载环境变量
-dotenv.config({ path: '.env' });
+dotenv.config({ path: '.process' });
 
 const app = express();
 const PORT = process.env.PORT || 3000;
