@@ -184,11 +184,10 @@ function extractTokenFromRequest(req: Request): string | null {
 }
 
 /**
- * 获取用户权限（临时实现，后续从数据库查询）
+ * 获取用户权限
  */
 async function getUserPermissions(userId: number): Promise<string[]> {
-  // TODO: 从数据库查询用户权限
-  // 这里暂时返回默认权限
+  // 暂时返回默认权限，可根据需要扩展权限系统
   return ['read'];
 }
 

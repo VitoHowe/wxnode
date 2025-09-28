@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { userService } from '@/services/userService';
 import { asyncHandler, NotFoundError } from '@/middleware/errorHandler';
+import { ResponseUtil } from '@/utils/response';
 
 class UserController {
   /**
@@ -15,11 +16,7 @@ class UserController {
       keyword: keyword as string,
     });
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '获取成功');
   });
 
   /**
@@ -31,14 +28,10 @@ class UserController {
     const user = await userService.getUserById(Number(id));
     
     if (!user) {
-      throw new NotFoundError('用户不存在');
+      return ResponseUtil.notFoundError(res, '用户不存在');
     }
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: user,
-    });
+    return ResponseUtil.success(res, user, '获取成功');
   });
 
   /**
@@ -50,11 +43,7 @@ class UserController {
 
     const user = await userService.updateUser(Number(id), updateData);
 
-    res.status(200).json({
-      code: 200,
-      message: '更新成功',
-      data: user,
-    });
+    return ResponseUtil.success(res, user, '更新成功');
   });
 
   /**
@@ -65,11 +54,7 @@ class UserController {
 
     await userService.deleteUser(Number(id));
 
-    res.status(200).json({
-      code: 200,
-      message: '删除成功',
-      data: null,
-    });
+    return ResponseUtil.success(res, null, '删除成功');
   });
 }
 

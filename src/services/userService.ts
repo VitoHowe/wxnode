@@ -1,12 +1,15 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
 import { NotFoundError, ConflictError } from '@/middleware/errorHandler';
+import { PasswordUtil } from '@/utils/password';
 
 // 用户接口
 interface User {
   id: number;
-  openid: string;
+  openid?: string;
   unionid?: string;
+  username?: string;
+  password?: string;
   nickname?: string;
   avatar_url?: string;
   phone?: string;
@@ -17,8 +20,8 @@ interface User {
   updated_at: Date;
 }
 
-// 创建用户参数
-interface CreateUserParams {
+// 微信用户创建参数
+interface CreateWechatUserParams {
   openid: string;
   unionid?: string;
   nickname?: string;
@@ -26,6 +29,19 @@ interface CreateUserParams {
   phone?: string;
   role_id?: number;
 }
+
+// 普通用户创建参数
+interface CreateNormalUserParams {
+  username: string;
+  password: string;
+  nickname?: string;
+  avatar_url?: string;
+  phone?: string;
+  role_id?: number;
+}
+
+// 创建用户参数（兼容两种类型）
+type CreateUserParams = CreateWechatUserParams | CreateNormalUserParams;
 
 // 更新用户参数
 interface UpdateUserParams {
@@ -62,6 +78,20 @@ class UserService {
   }
 
   /**
+   * 根据用户名获取用户
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    try {
+      const sql = 'SELECT * FROM users WHERE username = ? LIMIT 1';
+      const users = await query(sql, [username]);
+      return users.length > 0 ? users[0] : null;
+    } catch (error) {
+      logger.error('根据用户名获取用户失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 根据ID获取用户
    */
   async getUserById(id: number): Promise<User | null> {
@@ -81,9 +111,9 @@ class UserService {
   }
 
   /**
-   * 创建用户
+   * 创建微信用户
    */
-  async createUser(params: CreateUserParams): Promise<User> {
+  async createWechatUser(params: CreateWechatUserParams): Promise<User> {
     const {
       openid,
       unionid,
@@ -103,19 +133,21 @@ class UserService {
       // 将undefined转换为null，确保数据库兼容性
       const safeParams = [
         openid,
-        unionid ?? null,           // undefined -> null
+        unionid ?? null,
+        null, // username
+        null, // password
         nickname,
         avatar_url,
-        phone ?? null,            // undefined -> null  
+        phone ?? null,
         role_id
       ];
 
       const sql = `
-        INSERT INTO users (openid, unionid, nickname, avatar_url, phone, role_id, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+        INSERT INTO users (openid, unionid, username, password, nickname, avatar_url, phone, role_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `;
       
-      logger.info('创建用户参数:', { 
+      logger.info('创建微信用户参数:', { 
         openid: openid.substring(0, 8) + '***', 
         hasUnionid: !!unionid,
         nickname,
@@ -129,10 +161,109 @@ class UserService {
         throw new Error('创建用户后获取用户信息失败');
       }
 
-      logger.info(`用户创建成功: ID=${newUser.id}, openid=${openid.substring(0, 8)}***`);
+      logger.info(`微信用户创建成功: ID=${newUser.id}, openid=${openid.substring(0, 8)}***`);
       return newUser;
     } catch (error) {
-      logger.error('创建用户失败:', error);
+      logger.error('创建微信用户失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建普通用户
+   */
+  async createNormalUser(params: CreateNormalUserParams): Promise<User> {
+    const {
+      username,
+      password,
+      nickname = username,
+      avatar_url = '',
+      phone,
+      role_id = 2, // 默认为普通用户角色
+    } = params;
+
+    try {
+      // 检查用户名是否已存在
+      const existingUser = await this.getUserByUsername(username);
+      if (existingUser) {
+        throw new ConflictError('用户名已存在');
+      }
+
+      // 验证密码强度
+      const passwordValidation = PasswordUtil.validatePasswordStrength(password);
+      if (!passwordValidation.valid) {
+        throw new Error(passwordValidation.message);
+      }
+
+      // 加密密码
+      const hashedPassword = await PasswordUtil.hashPassword(password);
+
+      const safeParams = [
+        null, // openid
+        null, // unionid
+        username,
+        hashedPassword,
+        nickname,
+        avatar_url,
+        phone ?? null,
+        role_id
+      ];
+
+      const sql = `
+        INSERT INTO users (openid, unionid, username, password, nickname, avatar_url, phone, role_id, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+      `;
+      
+      logger.info('创建普通用户参数:', { 
+        username,
+        nickname,
+        role_id 
+      });
+      
+      const result = await query(sql, safeParams);
+      
+      const newUser = await this.getUserById(result.insertId);
+      if (!newUser) {
+        throw new Error('创建用户后获取用户信息失败');
+      }
+
+      logger.info(`普通用户创建成功: ID=${newUser.id}, username=${username}`);
+      return newUser;
+    } catch (error) {
+      logger.error('创建普通用户失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建用户（兼容接口）
+   */
+  async createUser(params: CreateUserParams): Promise<User> {
+    if ('openid' in params) {
+      return this.createWechatUser(params);
+    } else {
+      return this.createNormalUser(params);
+    }
+  }
+
+  /**
+   * 验证用户密码
+   */
+  async verifyUserPassword(username: string, password: string): Promise<User | null> {
+    try {
+      const user = await this.getUserByUsername(username);
+      if (!user || !user.password) {
+        return null;
+      }
+
+      const isValidPassword = await PasswordUtil.verifyPassword(password, user.password);
+      if (!isValidPassword) {
+        return null;
+      }
+
+      return user;
+    } catch (error) {
+      logger.error('验证用户密码失败:', error);
       throw error;
     }
   }

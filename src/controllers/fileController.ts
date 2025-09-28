@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { fileService } from '@/services/fileService';
 import { asyncHandler, NotFoundError, ValidationError } from '@/middleware/errorHandler';
+import { ResponseUtil } from '@/utils/response';
 
 class FileController {
   /**
@@ -8,11 +9,11 @@ class FileController {
    */
   uploadFile = asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
-      throw new ValidationError('请选择要上传的文件');
+      return ResponseUtil.validationError(res, '请选择要上传的文件');
     }
 
     if (!req.user) {
-      throw new ValidationError('用户未登录');
+      return ResponseUtil.authError(res, '用户未登录');
     }
 
     const { name, description } = req.body;
@@ -24,11 +25,7 @@ class FileController {
       userId: req.user.userId,
     });
 
-    res.status(200).json({
-      code: 200,
-      message: '文件上传成功',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '文件上传成功');
   });
 
   /**
@@ -38,7 +35,7 @@ class FileController {
     const { page = 1, limit = 20, status } = req.query;
 
     if (!req.user) {
-      throw new ValidationError('用户未登录');
+      return ResponseUtil.authError(res, '用户未登录');
     }
 
     const result = await fileService.getFiles({
@@ -48,11 +45,7 @@ class FileController {
       userId: req.user.userId,
     });
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '获取成功');
   });
 
   /**
@@ -64,14 +57,10 @@ class FileController {
     const file = await fileService.getFileById(Number(id));
     
     if (!file) {
-      throw new NotFoundError('文件不存在');
+      return ResponseUtil.notFoundError(res, '文件不存在');
     }
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: file,
-    });
+    return ResponseUtil.success(res, file, '获取成功');
   });
 
   /**
@@ -80,13 +69,13 @@ class FileController {
   parseFile = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
     const result = await fileService.parseFile(Number(id));
 
-    res.status(200).json({
-      code: 200,
-      message: '解析任务已启动',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '解析任务已启动');
   });
 
   /**
@@ -110,13 +99,13 @@ class FileController {
   deleteFile = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
     await fileService.deleteFile(Number(id));
 
-    res.status(200).json({
-      code: 200,
-      message: '删除成功',
-      data: null,
-    });
+    return ResponseUtil.success(res, null, '删除成功');
   });
 }
 

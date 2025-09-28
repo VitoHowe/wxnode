@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { questionService } from '@/services/questionService';
 import { asyncHandler, NotFoundError } from '@/middleware/errorHandler';
+import { ResponseUtil } from '@/utils/response';
 
 class QuestionController {
   /**
@@ -18,11 +19,7 @@ class QuestionController {
       limit: Number(limit),
     });
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '获取成功');
   });
 
   /**
@@ -34,14 +31,10 @@ class QuestionController {
     const question = await questionService.getQuestionById(Number(id));
     
     if (!question) {
-      throw new NotFoundError('题目不存在');
+      return ResponseUtil.notFoundError(res, '题目不存在');
     }
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: question,
-    });
+    return ResponseUtil.success(res, question, '获取成功');
   });
 
   /**
@@ -55,11 +48,7 @@ class QuestionController {
       limit: Number(limit),
     });
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: result,
-    });
+    return ResponseUtil.success(res, result, '获取成功');
   });
 
   /**
@@ -68,17 +57,32 @@ class QuestionController {
   getQuestionBankById = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    const bank = await questionService.getQuestionBankById(Number(id));
+    const questionBank = await questionService.getQuestionBankById(Number(id));
     
-    if (!bank) {
-      throw new NotFoundError('题库不存在');
+    if (!questionBank) {
+      return ResponseUtil.notFoundError(res, '题库不存在');
     }
 
-    res.status(200).json({
-      code: 200,
-      message: '获取成功',
-      data: bank,
-    });
+    return ResponseUtil.success(res, questionBank, '获取成功');
+  });
+
+  /**
+   * 批量创建题目
+   */
+  createQuestions = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
+    const { bankId, questions } = req.body;
+
+    if (!bankId || !questions || !Array.isArray(questions)) {
+      return ResponseUtil.validationError(res, '请提供题库ID和题目数组');
+    }
+
+    await questionService.createQuestions(bankId, questions);
+
+    return ResponseUtil.success(res, null, '批量创建成功', 201);
   });
 
   /**
@@ -86,15 +90,14 @@ class QuestionController {
    */
   updateQuestion = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const updateData = req.body;
 
-    const question = await questionService.updateQuestion(Number(id), updateData);
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
 
-    res.status(200).json({
-      code: 200,
-      message: '更新成功',
-      data: question,
-    });
+    const result = await questionService.updateQuestion(Number(id), req.body);
+
+    return ResponseUtil.success(res, result, '更新成功');
   });
 
   /**
@@ -103,13 +106,13 @@ class QuestionController {
   deleteQuestion = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
     await questionService.deleteQuestion(Number(id));
 
-    res.status(200).json({
-      code: 200,
-      message: '删除成功',
-      data: null,
-    });
+    return ResponseUtil.success(res, null, '删除成功');
   });
 }
 

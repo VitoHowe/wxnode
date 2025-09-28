@@ -17,7 +17,6 @@ const dbConfig = {
   timezone: '+08:00',
 };
 
-// 调试信息已移除
 // 数据库连接池
 let pool: mysql.Pool;
 
@@ -97,7 +96,7 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS users (
         id INT PRIMARY KEY AUTO_INCREMENT,
-        openid VARCHAR(100) UNIQUE NOT NULL,
+        openid VARCHAR(100) UNIQUE NULL COMMENT '微信openid，普通用户为空',
         unionid VARCHAR(100),
         nickname VARCHAR(100),
         avatar_url VARCHAR(500),
@@ -112,6 +111,9 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         FOREIGN KEY (role_id) REFERENCES roles(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
+
+    // 迁移逻辑：添加新字段（如果不存在）
+    await migrateUserTable(connection);
 
     // 创建题库表
     await connection.execute(`
@@ -185,6 +187,70 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
   } catch (error) {
     logger.error('创建数据库表失败:', error);
     throw error;
+  }
+};
+
+/**
+ * 迁移用户表 - 添加username和password字段
+ */
+const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    // 检查username字段是否存在
+    const usernameColumnCheck = await connection.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      AND TABLE_NAME = 'users' 
+      AND COLUMN_NAME = 'username'
+    `);
+
+    if ((usernameColumnCheck[0] as any[]).length === 0) {
+      // 添加username字段
+      await connection.execute(`
+        ALTER TABLE users 
+        ADD COLUMN username VARCHAR(50) UNIQUE NULL COMMENT '用户名，微信用户为空' 
+        AFTER unionid
+      `);
+      
+      // 添加username索引
+      await connection.execute(`
+        ALTER TABLE users 
+        ADD INDEX idx_username (username)
+      `);
+      
+      logger.info('已添加username字段和索引');
+    }
+
+    // 检查password字段是否存在
+    const passwordColumnCheck = await connection.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      AND TABLE_NAME = 'users' 
+      AND COLUMN_NAME = 'password'
+    `);
+
+    if ((passwordColumnCheck[0] as any[]).length === 0) {
+      // 添加password字段
+      await connection.execute(`
+        ALTER TABLE users 
+        ADD COLUMN password VARCHAR(255) NULL COMMENT '密码hash，微信用户为空' 
+        AFTER username
+      `);
+      
+      logger.info('已添加password字段');
+    }
+
+    // 修改openid字段为可空（如果还不是）
+    await connection.execute(`
+      ALTER TABLE users 
+      MODIFY COLUMN openid VARCHAR(100) UNIQUE NULL COMMENT '微信openid，普通用户为空'
+    `);
+
+    logger.info('用户表迁移完成');
+  } catch (error) {
+    logger.error('用户表迁移失败:', error);
+    // 不抛出错误，让应用继续运行
   }
 };
 

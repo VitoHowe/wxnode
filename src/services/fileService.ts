@@ -174,8 +174,7 @@ class FileService {
       // 更新状态为解析中
       await query('UPDATE question_banks SET parse_status = ?, updated_at = NOW() WHERE id = ?', ['parsing', id]);
 
-      // TODO: 这里应该调用Python解析服务
-      // 暂时模拟异步解析任务
+      // 暂时模拟异步解析任务，生产环境应调用专门的解析服务
       const taskId = `task_${id}_${Date.now()}`;
       
       // 模拟异步解析（实际应该调用解析服务）

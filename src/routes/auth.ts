@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authController } from '@/controllers/authController';
 import { validateRequest, validationSchemas } from '@/middleware/validation';
-import { authenticateRefreshToken } from '@/middleware/auth';
+import { authenticateRefreshToken, authenticateToken } from '@/middleware/auth';
 
 const router = Router();
 
@@ -10,29 +10,47 @@ const router = Router();
  * /api/auth/login:
  *   post:
  *     tags: [认证]
- *     summary: 微信小程序登录
- *     description: 使用微信小程序code进行登录认证
+ *     summary: 用户登录（支持微信和普通用户）
+ *     description: 支持微信小程序登录和普通用户登录两种方式
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - code
- *             properties:
- *               code:
- *                 type: string
- *                 description: 微信小程序wx.login获取的code
- *               encryptedData:
- *                 type: string
- *                 description: 加密的用户信息（可选）
- *               iv:
- *                 type: string
- *                 description: 初始向量（可选）
- *               signature:
- *                 type: string
- *                 description: 数据签名（可选）
+ *             oneOf:
+ *               - type: object
+ *                 title: 微信登录
+ *                 required:
+ *                   - code
+ *                 properties:
+ *                   code:
+ *                     type: string
+ *                     description: 微信小程序wx.login获取的code
+ *                   encryptedData:
+ *                     type: string
+ *                     description: 加密的用户信息（可选）
+ *                   iv:
+ *                     type: string
+ *                     description: 初始向量（可选）
+ *                   signature:
+ *                     type: string
+ *                     description: 数据签名（可选）
+ *               - type: object
+ *                 title: 普通用户登录
+ *                 required:
+ *                   - username
+ *                   - password
+ *                 properties:
+ *                   username:
+ *                     type: string
+ *                     description: 用户名
+ *                     minLength: 3
+ *                     maxLength: 50
+ *                   password:
+ *                     type: string
+ *                     description: 密码
+ *                     minLength: 6
+ *                     maxLength: 20
  *     responses:
  *       200:
  *         description: 登录成功
@@ -63,7 +81,75 @@ const router = Router();
  *       401:
  *         description: 认证失败
  */
-router.post('/login', validateRequest(validationSchemas.wechatLogin), authController.login);
+router.post('/login', validateRequest(validationSchemas.login), authController.login);
+
+/**
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     tags: [认证]
+ *     summary: 普通用户注册
+ *     description: 注册新的普通用户账户
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: 用户名（3-50字符，只能包含字母、数字、下划线）
+ *                 minLength: 3
+ *                 maxLength: 50
+ *                 pattern: '^[a-zA-Z0-9_]+$'
+ *               password:
+ *                 type: string
+ *                 description: 密码（6-20字符，必须包含大小写字母和数字）
+ *                 minLength: 6
+ *                 maxLength: 20
+ *               nickname:
+ *                 type: string
+ *                 description: 昵称（可选，最大50字符）
+ *                 maxLength: 50
+ *               phone:
+ *                 type: string
+ *                 description: 手机号（可选）
+ *                 pattern: '^1[3-9]\d{9}$'
+ *     responses:
+ *       201:
+ *         description: 注册成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: number
+ *                   example: 201
+ *                 message:
+ *                   type: string
+ *                   example: "注册成功"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *                     expiresIn:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ *       400:
+ *         description: 请求参数错误
+ *       409:
+ *         description: 用户名已存在
+ */
+router.post('/register', validateRequest(validationSchemas.register), authController.register);
 
 /**
  * @swagger
@@ -107,7 +193,7 @@ router.post('/refresh', validateRequest(validationSchemas.refreshToken), authent
  *       401:
  *         description: 未登录
  */
-router.get('/profile', authController.getProfile);
+router.get('/profile', authenticateToken, authController.getProfile);
 
 /**
  * @swagger
@@ -140,7 +226,7 @@ router.get('/profile', authController.getProfile);
  *       401:
  *         description: 未登录
  */
-router.put('/profile', validateRequest(validationSchemas.updateProfile), authController.updateProfile);
+router.put('/profile', authenticateToken, validateRequest(validationSchemas.updateProfile), authController.updateProfile);
 
 /**
  * @swagger
@@ -157,6 +243,6 @@ router.put('/profile', validateRequest(validationSchemas.updateProfile), authCon
  *       401:
  *         description: 未登录
  */
-router.post('/logout', authController.logout);
+router.post('/logout', authenticateToken, authController.logout);
 
 export default router;

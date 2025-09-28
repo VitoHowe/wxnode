@@ -66,7 +66,41 @@ export const validateRequest = (schema: {
 
 // 常用验证模式
 export const validationSchemas = {
-  // 微信登录验证
+  // 统一登录验证（支持微信和普通用户）
+  login: {
+    body: Joi.object({
+      // 微信登录参数
+      code: Joi.string().optional(),
+      encryptedData: Joi.string().optional(),
+      iv: Joi.string().optional(),
+      signature: Joi.string().optional(),
+      
+      // 普通用户登录参数
+      username: Joi.string().min(3).max(50).optional(),
+      password: Joi.string().min(6).max(20).optional(),
+    }).custom((value, helpers) => {
+      const isWechatLogin = !!value.code;
+      const isNormalLogin = !!(value.username && value.password);
+      
+      if (!isWechatLogin && !isNormalLogin) {
+        return helpers.error('any.invalid', {
+          message: '请提供微信登录参数(code)或普通登录参数(username, password)'
+        });
+      }
+      
+      if (isWechatLogin && isNormalLogin) {
+        return helpers.error('any.invalid', {
+          message: '不能同时使用两种登录方式'
+        });
+      }
+      
+      return value;
+    }).messages({
+      'any.invalid': '{#message}'
+    }),
+  },
+
+  // 微信登录验证（保持向后兼容）
   wechatLogin: {
     body: Joi.object({
       code: Joi.string().required().messages({
@@ -76,6 +110,49 @@ export const validationSchemas = {
       encryptedData: Joi.string().optional(),
       iv: Joi.string().optional(),
       signature: Joi.string().optional(),
+    }),
+  },
+
+  // 普通用户登录验证
+  normalLogin: {
+    body: Joi.object({
+      username: Joi.string().min(3).max(50).required().messages({
+        'string.empty': '用户名不能为空',
+        'string.min': '用户名长度至少3个字符',
+        'string.max': '用户名长度不能超过50个字符',
+        'any.required': '用户名是必需的',
+      }),
+      password: Joi.string().min(6).max(20).required().messages({
+        'string.empty': '密码不能为空',
+        'string.min': '密码长度至少6位',
+        'string.max': '密码长度不能超过20位',
+        'any.required': '密码是必需的',
+      }),
+    }),
+  },
+
+  // 用户注册验证
+  register: {
+    body: Joi.object({
+      username: Joi.string().min(3).max(50).pattern(/^[a-zA-Z0-9_]+$/).required().messages({
+        'string.empty': '用户名不能为空',
+        'string.min': '用户名长度至少3个字符',
+        'string.max': '用户名长度不能超过50个字符',
+        'string.pattern.base': '用户名只能包含字母、数字和下划线',
+        'any.required': '用户名是必需的',
+      }),
+      password: Joi.string().min(6).max(20).pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,20}$/).required().messages({
+        'string.min': '密码长度至少6位',
+        'string.max': '密码长度不能超过20位',
+        'string.pattern.base': '密码必须包含大小写字母和数字',
+        'any.required': '密码是必需的',
+      }),
+      nickname: Joi.string().max(50).optional().messages({
+        'string.max': '昵称长度不能超过50个字符',
+      }),
+      phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional().messages({
+        'string.pattern.base': '手机号格式不正确',
+      }),
     }),
   },
 

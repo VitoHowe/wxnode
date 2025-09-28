@@ -7,10 +7,11 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'wxnode-refresh-sec
 const ACCESS_TOKEN_EXPIRES_IN = '2h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
 
-// Token载荷接口
+// Token载荷接口 - 支持两种用户类型
 export interface TokenPayload {
   userId: number;
-  openid: string;
+  openid?: string;      // 微信用户特有
+  username?: string;    // 普通用户特有
   type: 'access' | 'refresh';
 }
 
@@ -130,5 +131,5 @@ export class JWTUtil {
     const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000);
     
     return expiration <= fifteenMinutesFromNow;
-  }
+    }
 }
