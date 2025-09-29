@@ -272,6 +272,77 @@ export const validationSchemas = {
     }).unknown(true), // 允许其他未知字段
   },
 
+  // 新建模型配置
+  createModelConfig: {
+    body: Joi.object({
+      name: Joi.string().max(100).required().messages({
+        'string.empty': '模型名称不能为空',
+        'string.max': '模型名称长度不能超过100个字符',
+        'any.required': '模型名称是必需的',
+      }),
+      endpoint: Joi.string().uri({ allowRelative: false }).max(255).required().messages({
+        'string.empty': '模型地址不能为空',
+        'string.uri': '模型地址必须为有效的URL',
+        'string.max': '模型地址长度不能超过255个字符',
+        'any.required': '模型地址是必需的',
+      }),
+      api_key: Joi.string().max(255).required().messages({
+        'string.empty': '模型密钥不能为空',
+        'string.max': '模型密钥长度不能超过255个字符',
+        'any.required': '模型密钥是必需的',
+      }),
+      description: Joi.string().allow('', null).max(500).optional().messages({
+        'string.max': '描述长度不能超过500个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }),
+  },
+
+  // 更新模型配置
+  updateModelConfig: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必需的',
+      }),
+    }),
+    body: Joi.object({
+      name: Joi.string().max(100).optional().messages({
+        'string.empty': '模型名称不能为空',
+        'string.max': '模型名称长度不能超过100个字符',
+      }),
+      endpoint: Joi.string().uri({ allowRelative: false }).max(255).optional().messages({
+        'string.uri': '模型地址必须为有效的URL',
+        'string.max': '模型地址长度不能超过255个字符',
+      }),
+      api_key: Joi.string().max(255).optional().messages({
+        'string.max': '模型密钥长度不能超过255个字符',
+      }),
+      description: Joi.string().allow('', null).max(500).optional().messages({
+        'string.max': '描述长度不能超过500个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }).min(1).messages({
+      'object.min': '至少提供一个需要更新的字段',
+    }),
+  },
+
+  // 保存知识库解析格式
+  saveKnowledgeFormat: {
+    body: Joi.object().unknown(true),
+  },
+
+  // 保存题库解析格式
+  saveQuestionParseFormat: {
+    body: Joi.object().unknown(true),
+  },
+
   // 题库查询验证
   questionQuery: {
     query: Joi.object({

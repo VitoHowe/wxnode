@@ -1,10 +1,16 @@
 # 微信小程序题库管理系统 API 接口文档
 
-**版本**: v1.2.0  
-**最后更新**: 2025-09-28  
+**版本**: v1.3.0  
+**最后更新**: 2025-09-29  
 **基础URL**: `http://localhost:3001/api`
 
 ## 📋 更新日志
+
+### v1.3.0 (2025-09-29)
+- ✅ **新增系统设置模块**: 提供模型配置CRUD接口与知识库/题库解析格式管理
+- ✅ **数据库扩展**: 新增 `model_configs`、`system_settings` 两张表
+- ✅ **权限控制强化**: 系统设置接口仅限管理员及以上角色访问
+- ✅ **文档更新**: 补充系统设置API说明与样例
 
 ### v1.2.0 (2025-09-28)
 - ✅ **重大升级**: 实现统一响应格式，所有接口现在都返回一致的数据结构
@@ -28,58 +34,108 @@
 6. **完善的权限控制**: 基于角色的访问控制
 7. **文件上传与解析**: 支持题库文件上传和智能解析
 8. **详细日志记录**: 便于开发调试和生产监控
+9. **系统配置管理**: 支持模型服务接入参数与解析模板集中维护
 
-## 📦 文件管理模块
+## ⚙️ 系统设置模块
 
-### 流程总览
-- **步骤1：启动解析** 使用 `POST /api/files/{id}/parse` 创建解析任务。仅文件上传者、管理员或超级管理员可操作，接口会把文件状态从 `pending` 更新为 `parsing` 并返回任务信息。
-- **步骤2：查看状态** 调用 `GET /api/files/{id}/parse-status` 轮询解析进度，前端可根据返回的 `status`（`pending/parsing/completed/failed`）和附加信息更新界面。
-- **步骤3：人工干预（可选）** 若需要手动修正状态或在失败后重置，可使用 `PATCH /api/files/{id}/parse-status`。上传者可将状态改为 `pending` 或 `failed`，管理员/超级管理员可设置任意合法状态。
+### 模型配置
 
-### 接口详情
+- **数据库表**: `model_configs`
+  - `name` 模型名称（唯一）
+  - `endpoint` 模型服务地址
+  - `api_key` 模型密钥
+  - `description` 描述信息（可空）
+  - `status` 是否启用（1:启用 0:停用）
 
-#### POST /api/files/{id}/parse
-- **功能**：启动文件解析任务。
-- **权限**：需要 Bearer Token；文件上传者、管理员、超级管理员可用。
-- **请求参数**：路径参数 `id`（number）。
+#### GET /api/system/models
+- **功能**：获取全部模型配置列表
+- **权限**：需要 Bearer Token；管理员或超级管理员
 - **响应示例**：
 ```json
 {
   "code": 200,
-  "message": "解析任务已启动",
-  "data": {
-    "message": "解析任务已启动",
-    "taskId": "task_123_1695979200000"
-  },
-  "timestamp": "2025-09-29T06:45:00.123Z"
+  "message": "获取模型配置成功",
+  "data": [
+    {
+      "id": 1,
+      "name": "gpt-4-turbo",
+      "endpoint": "https://api.openai.com/v1/chat/completions",
+      "api_key": "sk-********",
+      "description": "OpenAI GPT-4 Turbo",
+      "status": 1,
+      "created_at": "2025-09-29 12:00:00",
+      "updated_at": "2025-09-29 12:00:00"
+    }
+  ],
+  "timestamp": "2025-09-29T09:10:00.123Z"
 }
 ```
 
-- **补充说明**：
-  - 所有日期时间字段均以 `YYYY-MM-DD HH:mm:ss` 返回，更便于前端展示。
-  - 若仅传入 `startTime` 或 `endTime`，将按照单侧边界筛选；若均未传入，则默认返回全部时间范围数据。
+#### POST /api/system/models
+- **功能**：新增模型配置
+- **权限**：需要 Bearer Token；管理员或超级管理员
+- **请求体**：
+```json
+{
+  "name": "gpt-4-turbo",
+  "endpoint": "https://api.openai.com/v1/chat/completions",
+  "api_key": "sk-********",
+  "description": "OpenAI模型",
+  "status": 1
+}
+```
+- **响应**：返回创建后的完整模型配置
 
+#### PUT /api/system/models/{id}
+- **功能**：更新模型配置
+- **权限**：需要 Bearer Token；管理员或超级管理员
+- **说明**：请求体至少包含一个可更新字段；`description` 允许传空串清空描述
 
-#### GET /api/files/{id}/parse-status
-- **功能**：查看文件解析状态与解析日志摘要。
-- **权限**：需要 Bearer Token；文件上传者及管理员/超级管理员可访问。
-- **请求参数**：路径参数 `id`（number）。
-- **响应字段**：`status`（当前解析状态）、`total_questions`、`parse_method`、`latest_log` 等。
+#### DELETE /api/system/models/{id}
+- **功能**：删除模型配置
+- **权限**：需要 Bearer Token；管理员或超级管理员
 
-#### PATCH /api/files/{id}/parse-status
-- **功能**：人工调整文件解析状态。
-- **权限**：需要 Bearer Token；文件上传者可以在 `pending/failed` 之间切换，管理员/超级管理员可设定任意合法状态。
-- **请求参数**：
-  - 路径参数 `id`（number）
-  - 请求体：
-    ```json
-    {
-      "status": "pending | parsing | completed | failed"
-    }
-    ```
-- **响应**：返回最新的文件详情对象，便于前端同步状态。
+### 知识库与题库解析格式
 
-## 📊 HTTP 状态码
+- **数据库表**: `system_settings`
+  - `type`：固定值 `knowledge_format` 或 `question_parse_format`
+  - `payload`：JSON 格式的解析模板
+  - `updated_by`：最近操作人ID（可空）
+
+#### GET /api/system/knowledge-format
+- **功能**：获取知识库解析格式配置
+- **权限**：需要 Bearer Token；管理员或超级管理员
+- **响应示例**：
+```json
+{
+  "code": 200,
+  "message": "获取知识库解析格式成功",
+  "data": {
+    "type": "knowledge_format",
+    "payload": {
+      "titleField": "标题",
+      "contentField": "内容"
+    },
+    "updated_by": 2,
+    "updated_at": "2025-09-29 10:30:12"
+  },
+  "timestamp": "2025-09-29T09:15:00.123Z"
+}
+```
+
+#### POST /api/system/knowledge-format
+- **功能**：保存知识库解析格式（请求体为任意JSON结构）
+- **权限**：需要 Bearer Token；管理员或超级管理员
+
+#### GET /api/system/question-parse-format
+- **功能**：获取题库解析格式配置
+- **权限**：需要 Bearer Token；管理员或超级管理员
+
+#### POST /api/system/question-parse-format
+- **功能**：保存题库解析格式（请求体为任意JSON结构）
+- **权限**：需要 Bearer Token；管理员或超级管理员
+
+## 📦 文件管理模块
 
 | 状态码 | 说明 |
 |--------|------|

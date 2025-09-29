@@ -17,6 +17,7 @@ import authRoutes from '@/routes/auth';
 import userRoutes from '@/routes/users';
 import fileRoutes from '@/routes/files';
 import questionRoutes from '@/routes/questions';
+import systemRoutes from '@/routes/system';
 
 // 加载环境变量
 dotenv.config({ path: '.process' });
@@ -81,6 +82,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/questions', questionRoutes);
+app.use('/api/system', systemRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);

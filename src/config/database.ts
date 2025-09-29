@@ -175,6 +175,34 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // 创建模型配置表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS model_configs (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        endpoint VARCHAR(255) NOT NULL,
+        api_key VARCHAR(255) NOT NULL,
+        description TEXT,
+        status TINYINT DEFAULT 1 COMMENT '1:启用 0:停用',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_model_name (name)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 创建系统设置表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS system_settings (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        type VARCHAR(50) NOT NULL,
+        payload JSON NOT NULL,
+        updated_by INT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_type (type),
+        CONSTRAINT fk_settings_user FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 插入默认角色数据
     await connection.execute(`
       INSERT IGNORE INTO roles (id, name, permissions, description) VALUES
