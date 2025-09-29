@@ -154,7 +154,8 @@ class AuthController {
       return ResponseUtil.notFoundError(res, '用户不存在');
     }
 
-    return ResponseUtil.success(res, user, '获取成功');
+    // 为了与登录接口返回结构保持一致，这里将用户数据包裹为 { user }
+    return ResponseUtil.success(res, { user }, '获取成功');
   });
 
   /**

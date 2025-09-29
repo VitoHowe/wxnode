@@ -1,8 +1,7 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
-import { NotFoundError } from '@/middleware/errorHandler';
+import { NotFoundError, AuthorizationError } from '@/middleware/errorHandler';
 import fs from 'fs';
-import path from 'path';
 
 // 文件接口
 interface QuestionBank {
@@ -16,8 +15,9 @@ interface QuestionBank {
   parse_method?: string;
   total_questions: number;
   created_by: number;
-  created_at: Date;
-  updated_at: Date;
+  created_at: string;
+  updated_at: string;
+  creator_name?: string;
 }
 
 // 上传文件参数
@@ -34,6 +34,8 @@ interface GetFilesParams {
   limit: number;
   status?: string;
   userId?: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 class FileService {
@@ -45,16 +47,17 @@ class FileService {
 
     try {
       const sql = `
-        INSERT INTO question_banks (name, description, file_original_name, file_path, file_size, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+        INSERT INTO question_banks (name, description, file_original_name, file_path, file_size, parse_status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
       `;
       
       const result = await query(sql, [
         name,
-        description,
-        file.originalname,
-        file.path,
-        file.size,
+        description ?? null,
+        file.originalname ?? null,
+        file.path ?? null,
+        file.size ?? null,
+        'pending',
         userId,
       ]);
       
@@ -79,8 +82,10 @@ class FileService {
    * 获取文件列表
    */
   async getFiles(params: GetFilesParams): Promise<{ files: QuestionBank[]; total: number; pagination: any }> {
-    const { page, limit, status, userId } = params;
-    const offset = (page - 1) * limit;
+    const pageNum = Number(params.page) || 1;
+    const limitNum = Number(params.limit) || 20;
+    const { status, userId, startTime, endTime } = params;
+    const offsetNum = (pageNum - 1) * limitNum;
 
     try {
       // 构建查询条件
@@ -88,42 +93,54 @@ class FileService {
       const queryParams: any[] = [];
 
       if (status) {
-        whereConditions.push('parse_status = ?');
+        whereConditions.push('qb.parse_status = ?');
         queryParams.push(status);
       }
 
       if (userId) {
-        whereConditions.push('created_by = ?');
+        whereConditions.push('qb.created_by = ?');
         queryParams.push(userId);
+      }
+
+      if (startTime) {
+        whereConditions.push('qb.created_at >= ?');
+        queryParams.push(startTime);
+      }
+
+      if (endTime) {
+        whereConditions.push('qb.created_at <= ?');
+        queryParams.push(endTime);
       }
 
       const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
       // 获取总数
-      const countSql = `SELECT COUNT(*) as total FROM question_banks ${whereClause}`;
-      const countResult = await query(countSql, queryParams);
+      const countSql = `SELECT COUNT(*) as total FROM question_banks qb ${whereClause}`;
+      const countResult = await query(countSql, queryParams.length ? queryParams : []);
       const total = countResult[0].total;
 
-      // 获取文件列表
+      // 获取文件列表（为避免某些 MySQL 版本对 LIMIT/OFFSET 绑定参数报错，这里直接插入已验证的数值）
       const sql = `
         SELECT qb.*, u.nickname as creator_name
         FROM question_banks qb 
         LEFT JOIN users u ON qb.created_by = u.id 
         ${whereClause}
         ORDER BY qb.created_at DESC 
-        LIMIT ? OFFSET ?
+        LIMIT ${limitNum} OFFSET ${offsetNum}
       `;
       
-      const files = await query(sql, [...queryParams, limit, offset]);
+      const files = await query(sql, queryParams.length ? queryParams : []);
+
+      const formattedFiles = (files as any[]).map(formatFileRecord);
 
       return {
-        files,
+        files: formattedFiles,
         total,
         pagination: {
-          page,
-          limit,
+          page: pageNum,
+          limit: limitNum,
           total,
-          totalPages: Math.ceil(total / limit),
+          totalPages: Math.ceil(total / limitNum),
         },
       };
     } catch (error) {
@@ -144,7 +161,11 @@ class FileService {
         WHERE qb.id = ? LIMIT 1
       `;
       const files = await query(sql, [id]);
-      return files.length > 0 ? files[0] : null;
+      if (files.length === 0) {
+        return null;
+      }
+
+      return formatFileRecord(files[0]);
     } catch (error) {
       logger.error('根据ID获取文件失败:', error);
       throw error;
@@ -154,12 +175,17 @@ class FileService {
   /**
    * 解析文件
    */
-  async parseFile(id: number): Promise<{ message: string; taskId: string }> {
+  async parseFile(id: number, userId: number): Promise<{ message: string; taskId: string }> {
     try {
       // 检查文件是否存在
       const file = await this.getFileById(id);
       if (!file) {
         throw new NotFoundError('文件不存在');
+      }
+
+      // 权限检查：仅文件创建者可触发解析
+      if (file.created_by !== userId) {
+        throw new AuthorizationError('无权解析该文件');
       }
 
       // 检查文件状态
@@ -224,18 +250,19 @@ class FileService {
   /**
    * 删除文件
    */
-  async deleteFile(id: number): Promise<void> {
+  async deleteFile(id: number, userId: number): Promise<void> {
     try {
-      // 检查文件是否存在
       const file = await this.getFileById(id);
       if (!file) {
         throw new NotFoundError('文件不存在');
       }
 
-      // 删除数据库记录（级联删除相关题目）
+      if (file.created_by !== userId) {
+        throw new AuthorizationError('无权删除该文件');
+      }
+
       await query('DELETE FROM question_banks WHERE id = ?', [id]);
 
-      // 删除物理文件
       if (file.file_path && fs.existsSync(file.file_path)) {
         fs.unlinkSync(file.file_path);
       }
@@ -250,21 +277,26 @@ class FileService {
   /**
    * 更新文件解析状态
    */
-  async updateParseStatus(id: number, status: string, data?: any): Promise<void> {
+  async updateParseStatus(id: number, status: 'pending' | 'parsing' | 'completed' | 'failed', data?: { total_questions?: number; parse_method?: string }): Promise<void> {
     try {
-      const updateData: any = {
+      const updateData: Record<string, any> = {
         parse_status: status,
         updated_at: new Date(),
       };
 
       if (data) {
-        if (data.total_questions) updateData.total_questions = data.total_questions;
-        if (data.parse_method) updateData.parse_method = data.parse_method;
+        if (data.total_questions !== undefined) {
+          updateData.total_questions = data.total_questions;
+        }
+        if (data.parse_method !== undefined) {
+          updateData.parse_method = data.parse_method;
+        }
       }
 
-      const setClause = Object.keys(updateData).map(key => `${key} = ?`).join(', ');
-      const values = Object.values(updateData);
-      values.push(id);
+      const setClause = Object.keys(updateData)
+        .map(key => `${key} = ?`)
+        .join(', ');
+      const values = [...Object.values(updateData), id];
 
       await query(`UPDATE question_banks SET ${setClause} WHERE id = ?`, values);
 
@@ -273,6 +305,34 @@ class FileService {
       logger.error('更新文件解析状态失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 设置文件解析状态（供 API 调用）
+   */
+  async setParseStatus(
+    id: number,
+    status: 'pending' | 'parsing' | 'completed' | 'failed',
+    actor: { userId: number; isAdmin: boolean },
+    extra?: { total_questions?: number; parse_method?: string }
+  ): Promise<QuestionBank> {
+    const file = await this.getFileById(id);
+    if (!file) {
+      throw new NotFoundError('文件不存在');
+    }
+
+    if (!actor.isAdmin && file.created_by !== actor.userId) {
+      throw new AuthorizationError('无权更新该文件的解析状态');
+    }
+
+    await this.updateParseStatus(id, status, extra);
+
+    const updated = await this.getFileById(id);
+    if (!updated) {
+      throw new NotFoundError('文件不存在');
+    }
+
+    return updated;
   }
 
   /**
@@ -301,6 +361,35 @@ class FileService {
       }
     }, 5000); // 5秒后完成解析
   }
+}
+
+function formatFileRecord(file: any): QuestionBank {
+  return {
+    ...file,
+    created_at: formatDateTime(file.created_at),
+    updated_at: formatDateTime(file.updated_at),
+  };
+}
+
+function formatDateTime(value: Date | string | null | undefined): string {
+  if (!value) {
+    return '';
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const pad = (num: number) => num.toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = pad(date.getSeconds());
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
 export const fileService = new FileService();

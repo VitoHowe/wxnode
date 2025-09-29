@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import Joi from 'joi';
 import { logger } from '@/utils/logger';
 
+const DATE_TIME_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+
 // 验证结果接口
 interface ValidationResult {
   error?: Joi.ValidationError;
@@ -198,6 +200,51 @@ export const validationSchemas = {
     }),
   },
 
+  // 文件列表查询验证（包含解析状态筛选）
+  fileListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1).messages({
+        'number.base': '页码必须是数字',
+        'number.integer': '页码必须是整数',
+        'number.min': '页码必须大于0',
+      }),
+      limit: Joi.number().integer().min(1).max(100).default(20).messages({
+        'number.base': '每页数量必须是数字',
+        'number.integer': '每页数量必须是整数',
+        'number.min': '每页数量必须大于0',
+        'number.max': '每页数量不能超过100',
+      }),
+      status: Joi.string().valid('pending', 'parsing', 'completed', 'failed').optional().messages({
+        'any.only': 'status 仅支持 pending, parsing, completed, failed',
+      }),
+      startTime: Joi.string().pattern(DATE_TIME_REGEX).optional().messages({
+        'string.pattern.base': 'startTime 时间格式需为 YYYY-MM-DD HH:mm:ss',
+      }),
+      endTime: Joi.string().pattern(DATE_TIME_REGEX).optional().messages({
+        'string.pattern.base': 'endTime 时间格式需为 YYYY-MM-DD HH:mm:ss',
+      }),
+    }).custom((value, helpers) => {
+      const { startTime, endTime } = value;
+
+      if (startTime && endTime) {
+        const start = new Date(startTime.replace(' ', 'T'));
+        const end = new Date(endTime.replace(' ', 'T'));
+
+        if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+          return helpers.error('any.invalid', { message: '时间格式无效' });
+        }
+
+        if (start > end) {
+          return helpers.error('any.invalid', { message: 'startTime 不能晚于 endTime' });
+        }
+      }
+
+      return value;
+    }).messages({
+      'any.invalid': '{#message}',
+    }),
+  },
+
   // ID参数验证
   idParam: {
     params: Joi.object({
@@ -234,6 +281,38 @@ export const validationSchemas = {
       keyword: Joi.string().max(100).optional(),
       page: Joi.number().integer().min(1).default(1),
       limit: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+
+  // 设置用户角色验证（仅超级管理员）
+  setUserRole: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必需的',
+      }),
+    }),
+    body: Joi.object({
+      role: Joi.string().valid('user', 'admin', 'super_admin').required().messages({
+        'any.only': 'role 仅支持 user, admin, super_admin',
+        'any.required': 'role 是必需的',
+      }),
+    }),
+  },
+
+  // 更新文件解析状态
+  updateFileParseStatus: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必需的',
+      }),
+    }),
+    body: Joi.object({
+      status: Joi.string().valid('pending', 'parsing', 'completed', 'failed').required().messages({
+        'any.only': 'status 仅支持 pending, parsing, completed, failed',
+        'any.required': 'status 是必需的',
+      }),
     }),
   },
 };

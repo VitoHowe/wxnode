@@ -56,6 +56,25 @@ class UserController {
 
     return ResponseUtil.success(res, null, '删除成功');
   });
+
+  /**
+   * 设置用户角色（仅超级管理员）
+   */
+  setUserRole = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { role } = req.body as { role: 'user' | 'admin' | 'super_admin' };
+
+    // 查角色ID
+    const roleRow = await userService.getRoleByName(role);
+    if (!roleRow) {
+      return ResponseUtil.notFoundError(res, '角色不存在');
+    }
+
+    // 更新用户角色
+    const updated = await userService.updateUser(Number(id), { role_id: roleRow.id });
+
+    return ResponseUtil.success(res, updated, '角色更新成功');
+  });
 }
 
 export const userController = new UserController();

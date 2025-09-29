@@ -64,6 +64,19 @@ interface GetUsersParams {
 
 class UserService {
   /**
+   * 根据角色名称获取角色ID
+   */
+  async getRoleByName(name: 'user' | 'admin' | 'super_admin'): Promise<{ id: number; name: string } | null> {
+    try {
+      const sql = 'SELECT id, name FROM roles WHERE name = ? LIMIT 1';
+      const rows = await query(sql, [name]);
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      logger.error('根据角色名称获取角色失败:', error);
+      throw error;
+    }
+  }
+  /**
    * 根据openid获取用户
    */
   async getUserByOpenid(openid: string): Promise<User | null> {

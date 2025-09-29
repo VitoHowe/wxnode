@@ -140,7 +140,7 @@ router.post('/upload', upload.single('file'), validateRequest(validationSchemas.
  *       401:
  *         description: 未登录
  */
-router.get('/', validateRequest(validationSchemas.pagination), fileController.getFiles);
+router.get('/', validateRequest(validationSchemas.fileListQuery), fileController.getFiles);
 
 /**
  * @swagger
@@ -193,6 +193,51 @@ router.get('/:id', validateRequest(validationSchemas.idParam), fileController.ge
  *         description: 文件不存在
  */
 router.post('/:id/parse', validateRequest(validationSchemas.idParam), fileController.parseFile);
+
+/**
+ * @swagger
+ * /api/files/{id}/parse-status:
+ *   patch:
+ *     tags: [文件管理]
+ *     summary: 更新解析状态
+ *     description: 手动更新文件解析状态（文件上传者、管理员或超级管理员）
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 文件ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [pending, parsing, completed, failed]
+ *                 description: 解析状态
+ *     responses:
+ *       200:
+ *         description: 状态更新成功
+ *       401:
+ *         description: 未登录
+ *       403:
+ *         description: 权限不足
+ *       404:
+ *         description: 文件不存在
+ */
+router.patch(
+  '/:id/parse-status',
+  validateRequest(validationSchemas.updateFileParseStatus),
+  fileController.updateParseStatus
+);
 
 /**
  * @swagger

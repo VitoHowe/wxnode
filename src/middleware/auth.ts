@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { JWTUtil, TokenPayload } from '@/utils/jwt';
 import { logger } from '@/utils/logger';
+import { query } from '@/config/database';
 
 // 扩展Request接口以包含用户信息
 declare global {
@@ -187,8 +188,38 @@ function extractTokenFromRequest(req: Request): string | null {
  * 获取用户权限
  */
 async function getUserPermissions(userId: number): Promise<string[]> {
-  // 暂时返回默认权限，可根据需要扩展权限系统
-  return ['read'];
+  try {
+    const sql = `
+      SELECT r.name as role_name, r.permissions
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE u.id = ?
+      LIMIT 1
+    `;
+    const rows = await query(sql, [userId]);
+    if (!rows || rows.length === 0) return [];
+
+    const roleName = rows[0].role_name as string | null;
+    const permsRaw = rows[0].permissions;
+    let perms: string[] = [];
+    try {
+      perms = Array.isArray(permsRaw) ? permsRaw : JSON.parse(permsRaw || '[]');
+    } catch {
+      perms = [];
+    }
+
+    // 合成基于角色的权限标识，供 requireAdmin/requireSuperAdmin 使用
+    if (roleName === 'admin') {
+      perms.push('admin');
+    } else if (roleName === 'super_admin') {
+      perms.push('admin', 'super_admin');
+    }
+
+    return Array.from(new Set(perms));
+  } catch (error) {
+    logger.error('获取用户权限失败:', error);
+    return [];
+  }
 }
 
 /**
