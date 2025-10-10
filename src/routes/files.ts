@@ -173,8 +173,8 @@ router.get('/:id', validateRequest(validationSchemas.idParam), fileController.ge
  * /api/files/{id}/parse:
  *   post:
  *     tags: [文件管理]
- *     summary: 解析文件
- *     description: 启动文件解析任务
+ *     summary: 使用AI解析文件
+ *     description: 使用指定的AI供应商和模型解析题库文件
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -184,15 +184,53 @@ router.get('/:id', validateRequest(validationSchemas.idParam), fileController.ge
  *         schema:
  *           type: integer
  *         description: 文件ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - providerId
+ *               - modelName
+ *             properties:
+ *               providerId:
+ *                 type: integer
+ *                 description: AI供应商ID
+ *                 example: 1
+ *               modelName:
+ *                 type: string
+ *                 description: 模型名称
+ *                 example: "gpt-4-turbo"
  *     responses:
  *       200:
- *         description: 解析任务已启动
+ *         description: AI解析任务已启动
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "AI解析任务已启动"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     message:
+ *                       type: string
+ *                     taskId:
+ *                       type: string
+ *       400:
+ *         description: 参数错误
  *       401:
  *         description: 未登录
  *       404:
- *         description: 文件不存在
+ *         description: 文件或供应商不存在
  */
-router.post('/:id/parse', validateRequest(validationSchemas.idParam), fileController.parseFile);
+router.post('/:id/parse', validateRequest(validationSchemas.parseFile), fileController.parseFile);
 
 /**
  * @swagger

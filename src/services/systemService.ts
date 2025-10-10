@@ -1,30 +1,41 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
 import { ConflictError, NotFoundError } from '@/middleware/errorHandler';
+import { getProviderStrategy, ModelInfo } from './providerStrategies';
 
-export interface ModelConfig {
+export type ProviderType = 'openai' | 'gemini' | 'qwen' | 'custom';
+
+export type { ModelInfo } from './providerStrategies';
+
+export interface ProviderConfig {
   id: number;
+  type: ProviderType;
   name: string;
   endpoint: string;
   api_key: string;
+  provider_config: Record<string, any> | null;
   description: string | null;
   status: number;
   created_at: string;
   updated_at: string;
 }
 
-interface CreateModelConfigParams {
+interface CreateProviderConfigParams {
+  type: ProviderType;
   name: string;
   endpoint: string;
   api_key: string;
+  provider_config?: Record<string, any> | null;
   description?: string | null;
   status?: number;
 }
 
-interface UpdateModelConfigParams {
+interface UpdateProviderConfigParams {
+  type?: ProviderType;
   name?: string;
   endpoint?: string;
   api_key?: string;
+  provider_config?: Record<string, any> | null;
   description?: string | null;
   status?: number;
 }
@@ -39,48 +50,59 @@ interface SystemSetting<T = any> {
 }
 
 class SystemService {
-  async listModelConfigs(): Promise<ModelConfig[]> {
-    const rows = await query('SELECT * FROM model_configs ORDER BY created_at DESC');
+  async listProviderConfigs(status?: number): Promise<ProviderConfig[]> {
+    let sql = 'SELECT * FROM ai_providers';
+    const params: any[] = [];
+
+    if (status !== undefined) {
+      sql += ' WHERE status = ?';
+      params.push(status);
+    }
+
+    sql += ' ORDER BY created_at DESC';
+
+    const rows = await query(sql, params);
     return rows;
   }
 
-  async getModelConfigById(id: number): Promise<ModelConfig | null> {
-    const rows = await query('SELECT * FROM model_configs WHERE id = ? LIMIT 1', [id]);
+  async getProviderConfigById(id: number): Promise<ProviderConfig | null> {
+    const rows = await query('SELECT * FROM ai_providers WHERE id = ? LIMIT 1', [id]);
     return rows.length > 0 ? rows[0] : null;
   }
 
-  async createModelConfig(params: CreateModelConfigParams): Promise<ModelConfig> {
-    const { name, endpoint, api_key, description = null, status = 1 } = params;
+  async createProviderConfig(params: CreateProviderConfigParams): Promise<ProviderConfig> {
+    const { type, name, endpoint, api_key, provider_config = null, description = null, status = 1 } = params;
     const normalizedDescription = description === '' ? null : description;
     const normalizedStatus = typeof status === 'number' ? status : 1;
+    const normalizedProviderConfig = provider_config ? JSON.stringify(provider_config) : null;
 
     try {
       const result = await query(
-        `INSERT INTO model_configs (name, endpoint, api_key, description, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
-        [name, endpoint, api_key, normalizedDescription, normalizedStatus]
+        `INSERT INTO ai_providers (type, name, endpoint, api_key, provider_config, description, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [type, name, endpoint, api_key, normalizedProviderConfig, normalizedDescription, normalizedStatus]
       );
 
-      const created = await this.getModelConfigById(result.insertId);
+      const created = await this.getProviderConfigById(result.insertId);
       if (!created) {
-        throw new Error('创建模型配置后查询失败');
+        throw new Error('创建供应商配置后查询失败');
       }
 
-      logger.info('模型配置创建成功', { modelId: created.id, name: created.name });
+      logger.info('供应商配置创建成功', { providerId: created.id, type: created.type, name: created.name });
       return created;
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new ConflictError('模型名称已存在');
+        throw new ConflictError('该供应商类型和名称组合已存在');
       }
-      logger.error('创建模型配置失败', error);
+      logger.error('创建供应商配置失败', error);
       throw error;
     }
   }
 
-  async updateModelConfig(id: number, params: UpdateModelConfigParams): Promise<ModelConfig> {
-    const existing = await this.getModelConfigById(id);
+  async updateProviderConfig(id: number, params: UpdateProviderConfigParams): Promise<ProviderConfig> {
+    const existing = await this.getProviderConfigById(id);
     if (!existing) {
-      throw new NotFoundError('模型配置不存在');
+      throw new NotFoundError('供应商配置不存在');
     }
 
     const fields: string[] = [];
@@ -91,6 +113,8 @@ class SystemService {
         let normalizedValue = value;
         if (key === 'description' && value === '') {
           normalizedValue = null;
+        } else if (key === 'provider_config') {
+          normalizedValue = value ? JSON.stringify(value) : null;
         }
         fields.push(`${key} = ?`);
         values.push(normalizedValue);
@@ -105,32 +129,68 @@ class SystemService {
     values.push(id);
 
     try {
-      await query(`UPDATE model_configs SET ${fields.join(', ')} WHERE id = ?`, values);
+      await query(`UPDATE ai_providers SET ${fields.join(', ')} WHERE id = ?`, values);
     } catch (error: any) {
       if (error.code === 'ER_DUP_ENTRY') {
-        throw new ConflictError('模型名称已存在');
+        throw new ConflictError('该供应商类型和名称组合已存在');
       }
-      logger.error('更新模型配置失败', error);
+      logger.error('更新供应商配置失败', error);
       throw error;
     }
 
-    const updated = await this.getModelConfigById(id);
+    const updated = await this.getProviderConfigById(id);
     if (!updated) {
-      throw new NotFoundError('模型配置不存在');
+      throw new NotFoundError('供应商配置不存在');
     }
 
-    logger.info('模型配置更新成功', { modelId: id });
+    logger.info('供应商配置更新成功', { providerId: id });
     return updated;
   }
 
-  async deleteModelConfig(id: number): Promise<void> {
-    const existing = await this.getModelConfigById(id);
+  async deleteProviderConfig(id: number): Promise<void> {
+    const existing = await this.getProviderConfigById(id);
     if (!existing) {
-      throw new NotFoundError('模型配置不存在');
+      throw new NotFoundError('供应商配置不存在');
     }
 
-    await query('DELETE FROM model_configs WHERE id = ?', [id]);
-    logger.info('模型配置已删除', { modelId: id });
+    await query('DELETE FROM ai_providers WHERE id = ?', [id]);
+    logger.info('供应商配置已删除', { providerId: id });
+  }
+
+  async getProviderModels(id: number): Promise<ModelInfo[]> {
+    const provider = await this.getProviderConfigById(id);
+    if (!provider) {
+      throw new NotFoundError('供应商配置不存在');
+    }
+
+    if (provider.status !== 1) {
+      throw new Error('供应商已停用，无法获取模型列表');
+    }
+
+    try {
+      const strategy = getProviderStrategy(
+        provider.type,
+        provider.endpoint,
+        provider.api_key,
+        provider.provider_config || {}
+      );
+
+      const models = await strategy.fetchModels();
+      logger.info('成功获取供应商模型列表', { 
+        providerId: id, 
+        type: provider.type, 
+        modelCount: models.length 
+      });
+
+      return models;
+    } catch (error: any) {
+      logger.error('获取供应商模型列表失败', { 
+        providerId: id, 
+        type: provider.type, 
+        error: error.message 
+      });
+      throw error;
+    }
   }
 
   async getSetting<T = any>(type: SettingType): Promise<SystemSetting<T> | null> {

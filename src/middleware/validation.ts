@@ -200,6 +200,16 @@ export const validationSchemas = {
     }),
   },
 
+  // 供应商列表查询验证
+  providerListQuery: {
+    query: Joi.object({
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }),
+  },
+
   // 文件列表查询验证（包含解析状态筛选）
   fileListQuery: {
     query: Joi.object({
@@ -268,28 +278,63 @@ export const validationSchemas = {
       description: Joi.string().max(500).optional().messages({
         'string.max': '文件描述长度不能超过500个字符',
       }),
+      fileType: Joi.string().valid('question_bank', 'knowledge_base').default('question_bank').messages({
+        'any.only': '文件类型仅支持 question_bank 或 knowledge_base',
+      }),
       type: Joi.string().optional(), // 允许uniapp发送的type字段
     }).unknown(true), // 允许其他未知字段
   },
 
-  // 新建模型配置
-  createModelConfig: {
+  // 文件解析验证
+  parseFile: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'number.integer': 'ID必须是整数',
+        'number.positive': 'ID必须是正数',
+        'any.required': 'ID是必需的',
+      }),
+    }),
     body: Joi.object({
-      name: Joi.string().max(100).required().messages({
+      providerId: Joi.number().integer().positive().required().messages({
+        'number.base': '供应商ID必须是数字',
+        'number.integer': '供应商ID必须是整数',
+        'number.positive': '供应商ID必须是正数',
+        'any.required': '供应商ID是必需的',
+      }),
+      modelName: Joi.string().max(100).required().messages({
         'string.empty': '模型名称不能为空',
         'string.max': '模型名称长度不能超过100个字符',
         'any.required': '模型名称是必需的',
       }),
+    }),
+  },
+
+  // 新建供应商配置
+  createProviderConfig: {
+    body: Joi.object({
+      type: Joi.string().valid('openai', 'gemini', 'qwen', 'custom').required().messages({
+        'any.only': '供应商类型仅支持 openai, gemini, qwen, custom',
+        'any.required': '供应商类型是必需的',
+      }),
+      name: Joi.string().max(100).required().messages({
+        'string.empty': '供应商名称不能为空',
+        'string.max': '供应商名称长度不能超过100个字符',
+        'any.required': '供应商名称是必需的',
+      }),
       endpoint: Joi.string().uri({ allowRelative: false }).max(255).required().messages({
-        'string.empty': '模型地址不能为空',
-        'string.uri': '模型地址必须为有效的URL',
-        'string.max': '模型地址长度不能超过255个字符',
-        'any.required': '模型地址是必需的',
+        'string.empty': '供应商地址不能为空',
+        'string.uri': '供应商地址必须为有效的URL',
+        'string.max': '供应商地址长度不能超过255个字符',
+        'any.required': '供应商地址是必需的',
       }),
       api_key: Joi.string().max(255).required().messages({
-        'string.empty': '模型密钥不能为空',
-        'string.max': '模型密钥长度不能超过255个字符',
-        'any.required': '模型密钥是必需的',
+        'string.empty': 'API密钥不能为空',
+        'string.max': 'API密钥长度不能超过255个字符',
+        'any.required': 'API密钥是必需的',
+      }),
+      provider_config: Joi.object().optional().messages({
+        'object.base': '供应商配置必须是对象类型',
       }),
       description: Joi.string().allow('', null).max(500).optional().messages({
         'string.max': '描述长度不能超过500个字符',
@@ -301,7 +346,76 @@ export const validationSchemas = {
     }),
   },
 
-  // 更新模型配置
+  // 旧接口向后兼容
+  createModelConfig: {
+    body: Joi.object({
+      type: Joi.string().valid('openai', 'gemini', 'qwen', 'custom').optional().default('custom'),
+      name: Joi.string().max(100).required().messages({
+        'string.empty': '供应商名称不能为空',
+        'string.max': '供应商名称长度不能超过100个字符',
+        'any.required': '供应商名称是必需的',
+      }),
+      endpoint: Joi.string().uri({ allowRelative: false }).max(255).required().messages({
+        'string.empty': '供应商地址不能为空',
+        'string.uri': '供应商地址必须为有效的URL',
+        'string.max': '供应商地址长度不能超过255个字符',
+        'any.required': '供应商地址是必需的',
+      }),
+      api_key: Joi.string().max(255).required().messages({
+        'string.empty': 'API密钥不能为空',
+        'string.max': 'API密钥长度不能超过255个字符',
+        'any.required': 'API密钥是必需的',
+      }),
+      provider_config: Joi.object().optional(),
+      description: Joi.string().allow('', null).max(500).optional().messages({
+        'string.max': '描述长度不能超过500个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }),
+  },
+
+  // 更新供应商配置
+  updateProviderConfig: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必需的',
+      }),
+    }),
+    body: Joi.object({
+      type: Joi.string().valid('openai', 'gemini', 'qwen', 'custom').optional().messages({
+        'any.only': '供应商类型仅支持 openai, gemini, qwen, custom',
+      }),
+      name: Joi.string().max(100).optional().messages({
+        'string.empty': '供应商名称不能为空',
+        'string.max': '供应商名称长度不能超过100个字符',
+      }),
+      endpoint: Joi.string().uri({ allowRelative: false }).max(255).optional().messages({
+        'string.uri': '供应商地址必须为有效的URL',
+        'string.max': '供应商地址长度不能超过255个字符',
+      }),
+      api_key: Joi.string().max(255).optional().messages({
+        'string.max': 'API密钥长度不能超过255个字符',
+      }),
+      provider_config: Joi.object().optional().messages({
+        'object.base': '供应商配置必须是对象类型',
+      }),
+      description: Joi.string().allow('', null).max(500).optional().messages({
+        'string.max': '描述长度不能超过500个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }).min(1).messages({
+      'object.min': '至少提供一个需要更新的字段',
+    }),
+  },
+
+  // 旧接口向后兼容
   updateModelConfig: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({
@@ -310,17 +424,19 @@ export const validationSchemas = {
       }),
     }),
     body: Joi.object({
+      type: Joi.string().valid('openai', 'gemini', 'qwen', 'custom').optional(),
       name: Joi.string().max(100).optional().messages({
-        'string.empty': '模型名称不能为空',
-        'string.max': '模型名称长度不能超过100个字符',
+        'string.empty': '供应商名称不能为空',
+        'string.max': '供应商名称长度不能超过100个字符',
       }),
       endpoint: Joi.string().uri({ allowRelative: false }).max(255).optional().messages({
-        'string.uri': '模型地址必须为有效的URL',
-        'string.max': '模型地址长度不能超过255个字符',
+        'string.uri': '供应商地址必须为有效的URL',
+        'string.max': '供应商地址长度不能超过255个字符',
       }),
       api_key: Joi.string().max(255).optional().messages({
-        'string.max': '模型密钥长度不能超过255个字符',
+        'string.max': 'API密钥长度不能超过255个字符',
       }),
+      provider_config: Joi.object().optional(),
       description: Joi.string().allow('', null).max(500).optional().messages({
         'string.max': '描述长度不能超过500个字符',
       }),

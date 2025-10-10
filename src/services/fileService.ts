@@ -1,13 +1,20 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
 import { NotFoundError, AuthorizationError } from '@/middleware/errorHandler';
+import { systemService } from './systemService';
+import { getParseStrategy, ParsedQuestion } from './providerStrategies/parseStrategies';
 import fs from 'fs';
+import path from 'path';
+
+// 文件类型
+type FileType = 'question_bank' | 'knowledge_base';
 
 // 文件接口
 interface QuestionBank {
   id: number;
   name: string;
   description?: string;
+  file_type: FileType;
   file_original_name: string;
   file_path: string;
   file_size: number;
@@ -25,6 +32,7 @@ interface UploadFileParams {
   file: Express.Multer.File;
   name: string;
   description?: string;
+  fileType?: FileType;
   userId: number;
 }
 
@@ -43,30 +51,22 @@ class FileService {
    * 上传文件
    */
   async uploadFile(params: UploadFileParams): Promise<QuestionBank> {
-    const { file, name, description, userId } = params;
+    const { file, name, description, fileType = 'question_bank', userId } = params;
 
     try {
       const sql = `
-        INSERT INTO question_banks (name, description, file_original_name, file_path, file_size, parse_status, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        INSERT INTO question_banks (name, description, file_type, file_original_name, file_path, file_size, parse_status, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
       `;
-      
-      const result = await query(sql, [
-        name,
-        description ?? null,
-        file.originalname ?? null,
-        file.path ?? null,
-        file.size ?? null,
-        'pending',
-        userId,
-      ]);
+
+      const result = await query(sql, [name, description || null, fileType, file.originalname, file.path, file.size, userId]);
       
       const newFile = await this.getFileById(result.insertId);
       if (!newFile) {
         throw new Error('上传文件后获取文件信息失败');
       }
 
-      logger.info(`文件上传成功: ID=${newFile.id}, 文件名=${file.originalname}`);
+      logger.info(`文件上传成功: ID=${newFile.id}, 文件名=${file.originalname}, 类型=${fileType}`);
       return newFile;
     } catch (error) {
       // 如果数据库操作失败，删除已上传的文件
@@ -175,7 +175,7 @@ class FileService {
   /**
    * 解析文件
    */
-  async parseFile(id: number, userId: number): Promise<{ message: string; taskId: string }> {
+  async parseFile(id: number, userId: number, providerId: number, modelName: string): Promise<{ message: string; taskId: string }> {
     try {
       // 检查文件是否存在
       const file = await this.getFileById(id);
@@ -197,17 +197,31 @@ class FileService {
         return { message: '文件已解析完成', taskId: '' };
       }
 
-      // 更新状态为解析中
-      await query('UPDATE question_banks SET parse_status = ?, updated_at = NOW() WHERE id = ?', ['parsing', id]);
+      // 获取供应商配置
+      const provider = await systemService.getProviderConfigById(providerId);
+      if (!provider) {
+        throw new NotFoundError('供应商配置不存在');
+      }
 
-      // 暂时模拟异步解析任务，生产环境应调用专门的解析服务
+      if (provider.status !== 1) {
+        throw new Error('供应商已停用，无法使用');
+      }
+
+      // 更新状态为解析中，记录供应商和模型信息
+      await query(
+        'UPDATE question_banks SET parse_status = ?, provider_id = ?, model_name = ?, parse_method = ?, updated_at = NOW() WHERE id = ?',
+        ['parsing', providerId, modelName, provider.type, id]
+      );
+
       const taskId = `task_${id}_${Date.now()}`;
       
-      // 模拟异步解析（实际应该调用解析服务）
-      this.simulateParseTask(id, file.file_path);
+      // 异步执行AI解析任务
+      this.executeAIParseTask(id, file.file_path, provider, modelName).catch(error => {
+        logger.error('AI解析任务执行失败:', error);
+      });
 
-      logger.info(`文件解析任务已启动: ID=${id}, TaskID=${taskId}`);
-      return { message: '解析任务已启动', taskId };
+      logger.info(`AI解析任务已启动: ID=${id}, TaskID=${taskId}, Provider=${provider.name}, Model=${modelName}`);
+      return { message: 'AI解析任务已启动', taskId };
     } catch (error) {
       logger.error('启动文件解析失败:', error);
       throw error;
@@ -336,19 +350,129 @@ class FileService {
   }
 
   /**
-   * 模拟解析任务（实际应该调用Python服务）
+   * 执行AI解析任务
+   */
+  private async executeAIParseTask(id: number, filePath: string, provider: any, modelName: string): Promise<void> {
+    try {
+      // 获取文件信息（包含file_type）
+      const file = await this.getFileById(id);
+      if (!file) {
+        throw new Error('文件不存在');
+      }
+      
+      // 读取文件内容
+      const fileContent = await this.readFileContent(filePath);
+      
+      // 获取解析策略，传递文件类型
+      const strategy = getParseStrategy(provider, modelName, file.file_type);
+      
+      // 调用AI进行解析
+      const result = await strategy.parseFile(fileContent, path.basename(filePath));
+      
+      if (!result.success) {
+        // 解析失败
+        await query(
+          'UPDATE question_banks SET parse_status = ?, updated_at = NOW() WHERE id = ?',
+          ['failed', id]
+        );
+        
+        // 记录解析日志
+        await query(
+          `INSERT INTO parse_logs (bank_id, status, method, error_message, created_at)
+           VALUES (?, ?, ?, ?, NOW())`,
+          [id, 'failed', provider.type, result.error]
+        );
+        
+        logger.error('AI解析失败', { fileId: id, error: result.error });
+        return;
+      }
+      
+      // 保存解析的题目
+      await this.saveQuestions(id, result.questions);
+      
+      // 更新文件状态为已完成
+      await query(
+        'UPDATE question_banks SET parse_status = ?, total_questions = ?, updated_at = NOW() WHERE id = ?',
+        ['completed', result.totalQuestions, id]
+      );
+      
+      // 记录成功日志
+      await query(
+        `INSERT INTO parse_logs (bank_id, status, method, total_pages, parsed_pages, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [id, 'success', provider.type, result.totalQuestions, result.totalQuestions]
+      );
+      
+      logger.info('AI解析成功', {
+        fileId: id,
+        provider: provider.name,
+        model: modelName,
+        questionCount: result.totalQuestions,
+      });
+    } catch (error: any) {
+      logger.error('AI解析任务执行异常:', error);
+      
+      await query(
+        'UPDATE question_banks SET parse_status = ?, updated_at = NOW() WHERE id = ?',
+        ['failed', id]
+      );
+      
+      await query(
+        `INSERT INTO parse_logs (bank_id, status, method, error_message, created_at)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [id, 'failed', provider.type, error.message]
+      );
+    }
+  }
+
+  /**
+   * 读取文件内容
+   */
+  private async readFileContent(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      fs.readFile(filePath, 'utf-8', (err, data) => {
+        if (err) {
+          reject(new Error(`文件读取失败: ${err.message}`));
+        } else {
+          resolve(data);
+        }
+      });
+    });
+  }
+
+  /**
+   * 保存题目到数据库
+   */
+  private async saveQuestions(bankId: number, questions: ParsedQuestion[]): Promise<void> {
+    for (const question of questions) {
+      await query(
+        `INSERT INTO questions (bank_id, type, content, options, answer, explanation, difficulty, tags, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          bankId,
+          question.type,
+          question.content,
+          question.options ? JSON.stringify(question.options) : null,
+          question.answer,
+          question.explanation || null,
+          question.difficulty || 1,
+          question.tags ? JSON.stringify(question.tags) : null,
+        ]
+      );
+    }
+  }
+
+  /**
+   * 模拟解析任务（已废弃，保留以防兼容性问题）
    */
   private async simulateParseTask(id: number, filePath: string): Promise<void> {
-    // 模拟异步解析过程
     setTimeout(async () => {
       try {
-        // 模拟解析成功
         await this.updateParseStatus(id, 'completed', {
           total_questions: Math.floor(Math.random() * 100) + 1,
           parse_method: 'text_extraction',
         });
 
-        // 记录解析日志
         await query(`
           INSERT INTO parse_logs (bank_id, status, method, total_pages, parsed_pages, accuracy_score, processing_time, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
@@ -359,7 +483,7 @@ class FileService {
         logger.error(`模拟解析失败: ID=${id}`, error);
         await this.updateParseStatus(id, 'failed');
       }
-    }, 5000); // 5秒后完成解析
+    }, 5000);
   }
 }
 

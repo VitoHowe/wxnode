@@ -23,6 +23,7 @@ class FileController {
       file: req.file,
       name,
       description,
+      fileType: req.body.fileType,
       userId: req.user.userId,
     });
 
@@ -77,14 +78,15 @@ class FileController {
    */
   parseFile = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
+    const { providerId, modelName } = req.body;
 
     if (!req.user) {
       return ResponseUtil.authError(res, '用户未登录');
     }
 
-    const result = await fileService.parseFile(Number(id), req.user.userId);
+    const result = await fileService.parseFile(Number(id), req.user.userId, Number(providerId), modelName);
 
-    return ResponseUtil.success(res, result, '解析任务已启动');
+    return ResponseUtil.success(res, result, 'AI解析任务已启动');
   });
 
   /**
