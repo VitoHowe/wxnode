@@ -3,6 +3,7 @@ import { logger } from '@/utils/logger';
 import { NotFoundError, AuthorizationError } from '@/middleware/errorHandler';
 import { systemService } from './systemService';
 import { getParseStrategy, ParsedQuestion } from './providerStrategies/parseStrategies';
+import { FileContentReader } from '@/utils/fileContentReader';
 import fs from 'fs';
 import path from 'path';
 
@@ -360,14 +361,14 @@ class FileService {
         throw new Error('文件不存在');
       }
       
-      // 读取文件内容
-      const fileContent = await this.readFileContent(filePath);
+      // 读取文件内容，根据provider类型和文件类型返回不同格式
+      const fileContentResult = await FileContentReader.readFileContent(filePath, provider.type);
       
       // 获取解析策略，传递文件类型
       const strategy = getParseStrategy(provider, modelName, file.file_type);
       
-      // 调用AI进行解析
-      const result = await strategy.parseFile(fileContent, path.basename(filePath));
+      // 调用AI进行解析，传递文件内容结果
+      const result = await strategy.parseFile(fileContentResult, path.basename(filePath));
       
       if (!result.success) {
         // 解析失败
@@ -425,20 +426,6 @@ class FileService {
     }
   }
 
-  /**
-   * 读取文件内容
-   */
-  private async readFileContent(filePath: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      fs.readFile(filePath, 'utf-8', (err, data) => {
-        if (err) {
-          reject(new Error(`文件读取失败: ${err.message}`));
-        } else {
-          resolve(data);
-        }
-      });
-    });
-  }
 
   /**
    * 保存题目到数据库

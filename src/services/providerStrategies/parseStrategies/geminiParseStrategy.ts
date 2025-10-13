@@ -1,21 +1,21 @@
 import { BaseParseStrategy, ParseResult } from './baseParseStrategy';
+import { FileContentResult } from '@/utils/fileContentReader';
 import { logger } from '@/utils/logger';
 
 export class GeminiParseStrategy extends BaseParseStrategy {
-  async parseFile(fileContent: string, fileName: string): Promise<ParseResult> {
+  async parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult> {
     try {
       const systemPrompt = await this.buildSystemPrompt();
+      
+      // 构建parts内容
+      const parts = this.buildParts(fileContentResult, fileName, systemPrompt);
       
       const response = await this.axiosInstance.post(
         `${this.provider.endpoint}:generateContent?key=${this.provider.api_key}`,
         {
           contents: [
             {
-              parts: [
-                {
-                  text: `${systemPrompt}\n\n${this.buildUserPrompt(fileContent, fileName)}`,
-                },
-              ],
+              parts: parts,
             },
           ],
           generationConfig: {
@@ -72,5 +72,62 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         error: `Gemini解析失败: ${error.response?.data?.error?.message || error.message}`,
       };
     }
+  }
+
+  /**
+   * 构建Gemini API的parts内容，支持文本和base64格式
+   */
+  private buildParts(fileContentResult: FileContentResult, fileName: string, systemPrompt: string): any[] {
+    if (fileContentResult.type === 'text') {
+      // 文本内容
+      return [
+        {
+          text: `${systemPrompt}\n\n${this.buildUserPrompt(fileContentResult, fileName)}`,
+        },
+      ];
+    } else if (fileContentResult.type === 'base64') {
+      // 图片或PDF的base64内容
+      const content = fileContentResult.content as string;
+      const mimeType = fileContentResult.mimeType || 'image/jpeg';
+      
+      return [
+        {
+          text: `${systemPrompt}\n\n请解析以下${mimeType.includes('pdf') ? 'PDF文档' : '图片'}中的题目内容，文件名：${fileName}`,
+        },
+        {
+          inline_data: {
+            mime_type: mimeType,
+            data: content,
+          },
+        },
+      ];
+    } else if (fileContentResult.type === 'base64_array') {
+      // PDF转换的多张图片（Gemini不应该走到这里，因为它直接处理PDF）
+      const contents = fileContentResult.content as string[];
+      const mimeType = fileContentResult.mimeType || 'image/png';
+      const parts: any[] = [
+        {
+          text: `${systemPrompt}\n\n请解析以下PDF文档中的题目内容，文件名：${fileName}，共${contents.length}页`,
+        },
+      ];
+      
+      contents.forEach((base64) => {
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data: base64,
+          },
+        });
+      });
+      
+      return parts;
+    }
+    
+    // 默认返回文本格式
+    return [
+      {
+        text: `${systemPrompt}\n\n${this.buildUserPrompt(fileContentResult, fileName)}`,
+      },
+    ];
   }
 }

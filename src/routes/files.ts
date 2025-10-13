@@ -44,16 +44,22 @@ const upload = multer({
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // XLSX
       'text/csv',                           // CSV
       'application/json',                   // JSON
+      'image/jpeg',                         // JPEG
+      'image/jpg',                          // JPG
+      'image/png',                          // PNG
+      'image/gif',                          // GIF
+      'image/bmp',                          // BMP
+      'image/webp',                         // WEBP
     ];
     
     // 支持的文件扩展名（作为备用检查）
-    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.md', '.xlsx', '.xls', '.csv', '.json'];
+    const allowedExtensions = ['.pdf', '.doc', '.docx', '.txt', '.md', '.xlsx', '.xls', '.csv', '.json', '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
     if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
       cb(null, true);
     } else {
-      cb(new Error('不支持的文件格式，支持格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON'));
+      cb(new Error('不支持的文件格式，支持格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON, JPG, PNG, GIF, BMP, WEBP'));
     }
   }
 });
@@ -67,7 +73,7 @@ router.use(authenticateToken);
  *   post:
  *     tags: [文件管理]
  *     summary: 上传题库文件
- *     description: 上传题库文件，支持多种格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON
+ *     description: 上传题库文件，支持多种格式：PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON, JPG, PNG, GIF, BMP, WEBP
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -83,7 +89,7 @@ router.use(authenticateToken);
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: 题库文件（支持PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON）
+ *                 description: 题库文件（支持PDF, DOC, DOCX, TXT, MD, XLSX, XLS, CSV, JSON, JPG, PNG, GIF, BMP, WEBP）
  *               name:
  *                 type: string
  *                 description: 题库名称

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { ProviderConfig, systemService } from '@/services/systemService';
 import { logger } from '@/utils/logger';
+import { FileContentResult } from '@/utils/fileContentReader';
 
 // 文件类型
 type FileType = 'question_bank' | 'knowledge_base';
@@ -39,10 +40,10 @@ export abstract class BaseParseStrategy {
 
   /**
    * 解析文件内容
-   * @param fileContent 文件内容（文本形式）
+   * @param fileContentResult 文件内容结果（可能是文本或base64）
    * @param fileName 文件名
    */
-  abstract parseFile(fileContent: string, fileName: string): Promise<ParseResult>;
+  abstract parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult>;
 
   /**
    * 构建系统提示词
@@ -129,13 +130,18 @@ export abstract class BaseParseStrategy {
   /**
    * 构建用户提示词
    */
-  protected buildUserPrompt(fileContent: string, fileName: string): string {
-    return `请解析以下文件内容：
+  protected buildUserPrompt(fileContentResult: FileContentResult, fileName: string): string {
+    if (fileContentResult.type === 'text') {
+      return `请解析以下文件内容：
 
 文件名：${fileName}
 文件内容：
-${fileContent}
+${fileContentResult.content}
 
 请按照JSON格式返回解析结果。`;
+    } else {
+      // 对于base64内容，提示词会在具体策略中构建
+      return `请解析文件：${fileName}`;
+    }
   }
 }

@@ -1,10 +1,14 @@
 import { BaseParseStrategy, ParseResult } from './baseParseStrategy';
+import { FileContentResult } from '@/utils/fileContentReader';
 import { logger } from '@/utils/logger';
 
 export class QwenParseStrategy extends BaseParseStrategy {
-  async parseFile(fileContent: string, fileName: string): Promise<ParseResult> {
+  async parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult> {
     try {
       const systemPrompt = await this.buildSystemPrompt();
+      
+      // 构建消息内容（Qwen使用类似OpenAI的格式）
+      const userMessage = this.buildUserMessage(fileContentResult, fileName);
       
       const response = await this.axiosInstance.post(
         this.provider.endpoint,
@@ -16,10 +20,7 @@ export class QwenParseStrategy extends BaseParseStrategy {
                 role: 'system',
                 content: systemPrompt,
               },
-              {
-                role: 'user',
-                content: this.buildUserPrompt(fileContent, fileName),
-              },
+              userMessage,
             ],
           },
           parameters: {
@@ -75,5 +76,65 @@ export class QwenParseStrategy extends BaseParseStrategy {
         error: `Qwen解析失败: ${error.response?.data?.error?.message || error.message}`,
       };
     }
+  }
+
+  /**
+   * 构建用户消息，支持文本和图片/PDF的base64格式（类似OpenAI）
+   */
+  private buildUserMessage(fileContentResult: FileContentResult, fileName: string): any {
+    if (fileContentResult.type === 'text') {
+      // 文本内容
+      return {
+        role: 'user',
+        content: this.buildUserPrompt(fileContentResult, fileName),
+      };
+    } else if (fileContentResult.type === 'base64') {
+      // 图片或PDF的base64内容
+      const content = fileContentResult.content as string;
+      const mimeType = fileContentResult.mimeType || 'image/jpeg';
+      
+      return {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请解析以下${mimeType.includes('pdf') ? 'PDF文档' : '图片'}中的题目内容，文件名：${fileName}`,
+          },
+          {
+            type: 'image_url',
+            image_url: {
+              url: `data:${mimeType};base64,${content}`,
+            },
+          },
+        ],
+      };
+    } else if (fileContentResult.type === 'base64_array') {
+      // PDF转换的多张图片
+      const contents = fileContentResult.content as string[];
+      const mimeType = fileContentResult.mimeType || 'image/png';
+      const imageContents = contents.map((base64) => ({
+        type: 'image_url',
+        image_url: {
+          url: `data:${mimeType};base64,${base64}`,
+        },
+      }));
+      
+      return {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请解析以下PDF文档中的题目内容，文件名：${fileName}，共${contents.length}页`,
+          },
+          ...imageContents,
+        ],
+      };
+    }
+    
+    // 默认返回文本格式
+    return {
+      role: 'user',
+      content: this.buildUserPrompt(fileContentResult, fileName),
+    };
   }
 }
