@@ -5,17 +5,18 @@ export class GeminiStrategy extends BaseProviderStrategy {
   async fetchModels(): Promise<ModelInfo[]> {
     try {
       const response = await this.axiosInstance.get(
-        `https://generativelanguage.googleapis.com/v1/models?key=${this.apiKey}`,
+        `${this.endpoint}/v1beta/models`,
         {
           headers: {
             'Content-Type': 'application/json',
+            'x-goog-api-key': `${this.apiKey}`,
           },
         }
       );
-
+      // logger.info('Gemini模型获取成功:', response.data);
       if (response.data && Array.isArray(response.data.models)) {
         return response.data.models.map((model: any) => ({
-          id: model.name,
+          id: model.name.split('/')[1],
           name: model.displayName || model.name,
           description: model.description,
           version: model.version,

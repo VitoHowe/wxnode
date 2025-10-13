@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import { pdf } from 'pdf-to-img';
 import { logger } from './logger';
 
 // 支持的图片格式
@@ -162,6 +161,9 @@ export class FileContentReader {
       logger.info(`开始将PDF转换为图片: ${filePath}`);
       
       const base64Images: string[] = [];
+      
+      // 动态导入 pdf-to-img (ESM 模块)
+      const { pdf } = await import('pdf-to-img');
       
       // 使用pdf-to-img转换PDF
       const document = await pdf(filePath, {

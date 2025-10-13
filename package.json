@@ -9,6 +9,7 @@
     "start": "node -r tsconfig-paths/register dist/app.js",
     "test": "jest",
     "migrate": "npx knex migrate:latest",
+    "migrate:parse-logs": "ts-node -r tsconfig-paths/register scripts/migrate-parse-logs.ts",
     "seed": "npx knex seed:run"
   },
   "keywords": [

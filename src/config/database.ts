@@ -177,6 +177,8 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         accuracy_score DECIMAL(3,2),
         error_message TEXT,
         processing_time INT COMMENT '处理时间（秒）',
+        request_data JSON COMMENT '请求数据（fileContentResult、parts等）',
+        response_data JSON COMMENT 'API响应数据',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_bank_id (bank_id),
         FOREIGN KEY (bank_id) REFERENCES question_banks(id)

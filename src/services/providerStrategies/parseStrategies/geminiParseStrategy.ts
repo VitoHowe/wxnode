@@ -4,14 +4,31 @@ import { logger } from '@/utils/logger';
 
 export class GeminiParseStrategy extends BaseParseStrategy {
   async parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult> {
+    // 准备请求数据记录（截断base64以减少存储）
+    const requestDataForLog = this.prepareRequestDataForLog(fileContentResult, fileName);
+    
     try {
       const systemPrompt = await this.buildSystemPrompt();
       
       // 构建parts内容
       const parts = this.buildParts(fileContentResult, fileName, systemPrompt);
       
+      // 准备完整的请求数据
+      const fullRequestData = {
+        fileContentType: fileContentResult.type,
+        fileMimeType: fileContentResult.mimeType,
+        fileName: fileName,
+        provider: this.provider.name,
+        model: this.modelName,
+        endpoint: `${this.provider.endpoint}/v1beta/models/${this.modelName}:generateContent`,
+        partsCount: parts.length,
+        parts: this.sanitizePartsForLog(parts),
+      };
+      
+      logger.info('Gemini请求数据:', fullRequestData);
+      
       const response = await this.axiosInstance.post(
-        `${this.provider.endpoint}:generateContent?key=${this.provider.api_key}`,
+        `${this.provider.endpoint}/v1beta/models/${this.modelName}:generateContent`,
         {
           contents: [
             {
@@ -28,10 +45,22 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         {
           headers: {
             'Content-Type': 'application/json',
+            'x-goog-api-key': this.provider.api_key,
           },
         }
       );
-
+      
+      // 准备响应数据记录
+      const responseDataForLog = {
+        status: response.status,
+        statusText: response.statusText,
+        candidatesCount: response.data.candidates?.length || 0,
+        responseText: response.data.candidates?.[0]?.content?.parts?.[0]?.text?.substring(0, 1000) || '', // 截取前1000字符
+        fullResponse: response.data,
+      };
+      
+      logger.info('Gemini响应数据:', responseDataForLog);
+      
       const text = response.data.candidates[0].content.parts[0].text;
       
       // 提取JSON部分（Gemini可能返回带markdown的内容）
@@ -56,6 +85,8 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         success: true,
         questions: parsedData.questions,
         totalQuestions: parsedData.questions.length,
+        requestData: fullRequestData,
+        responseData: responseDataForLog,
       };
     } catch (error: any) {
       logger.error('Gemini解析失败', {
@@ -65,13 +96,62 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         response: error.response?.data,
       });
 
+      // 准备错误响应数据
+      const errorResponseData = {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorData: error.response?.data,
+      };
+
       return {
         success: false,
         questions: [],
         totalQuestions: 0,
         error: `Gemini解析失败: ${error.response?.data?.error?.message || error.message}`,
+        requestData: requestDataForLog,
+        responseData: errorResponseData,
       };
     }
+  }
+
+  /**
+   * 准备请求数据用于日志记录（基础版本）
+   */
+  private prepareRequestDataForLog(fileContentResult: FileContentResult, fileName: string): any {
+    return {
+      fileContentType: fileContentResult.type,
+      fileMimeType: fileContentResult.mimeType,
+      fileName: fileName,
+      provider: this.provider.name,
+      model: this.modelName,
+      contentSize: typeof fileContentResult.content === 'string' 
+        ? fileContentResult.content.length 
+        : (fileContentResult.content as string[]).length,
+    };
+  }
+
+  /**
+   * 清理parts数据用于日志（截断base64）
+   */
+  private sanitizePartsForLog(parts: any[]): any[] {
+    return parts.map(part => {
+      if (part.inline_data?.data) {
+        return {
+          ...part,
+          inline_data: {
+            ...part.inline_data,
+            data: `[BASE64_DATA_LENGTH: ${part.inline_data.data.length}]`, // 只记录长度
+          },
+        };
+      }
+      if (part.text && part.text.length > 500) {
+        return {
+          text: part.text.substring(0, 500) + '... [TRUNCATED]',
+        };
+      }
+      return part;
+    });
   }
 
   /**

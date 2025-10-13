@@ -10,6 +10,19 @@ export class OpenAIParseStrategy extends BaseParseStrategy {
       // 构建消息内容
       const userMessage = this.buildUserMessage(fileContentResult, fileName);
       
+      // 准备请求数据记录
+      const requestData = {
+        fileContentType: fileContentResult.type,
+        fileMimeType: fileContentResult.mimeType,
+        fileName: fileName,
+        provider: this.provider.name,
+        model: this.modelName,
+        endpoint: this.provider.endpoint,
+        messageType: userMessage.content ? (Array.isArray(userMessage.content) ? 'multipart' : 'text') : 'unknown',
+      };
+      
+      logger.info('OpenAI请求数据:', requestData);
+      
       const response = await this.axiosInstance.post(
         `${this.provider.endpoint}`,
         {
@@ -32,6 +45,18 @@ export class OpenAIParseStrategy extends BaseParseStrategy {
         }
       );
 
+      // 准备响应数据记录
+      const responseData = {
+        status: response.status,
+        statusText: response.statusText,
+        model: response.data.model,
+        usage: response.data.usage,
+        finishReason: response.data.choices?.[0]?.finish_reason,
+        contentPreview: response.data.choices?.[0]?.message?.content?.substring(0, 500) || '',
+      };
+      
+      logger.info('OpenAI响应数据:', responseData);
+
       const content = response.data.choices[0].message.content;
       const parsedData = JSON.parse(content);
 
@@ -49,6 +74,8 @@ export class OpenAIParseStrategy extends BaseParseStrategy {
         success: true,
         questions: parsedData.questions,
         totalQuestions: parsedData.questions.length,
+        requestData,
+        responseData,
       };
     } catch (error: any) {
       logger.error('OpenAI解析失败', {
@@ -58,11 +85,26 @@ export class OpenAIParseStrategy extends BaseParseStrategy {
         response: error.response?.data,
       });
 
+      const errorResponseData = {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorData: error.response?.data,
+      };
+
       return {
         success: false,
         questions: [],
         totalQuestions: 0,
         error: `OpenAI解析失败: ${error.response?.data?.error?.message || error.message}`,
+        requestData: {
+          fileContentType: fileContentResult.type,
+          fileMimeType: fileContentResult.mimeType,
+          fileName: fileName,
+          provider: this.provider.name,
+          model: this.modelName,
+        },
+        responseData: errorResponseData,
       };
     }
   }

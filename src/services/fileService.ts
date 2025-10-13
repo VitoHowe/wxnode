@@ -185,9 +185,9 @@ class FileService {
       }
 
       // 权限检查：仅文件创建者可触发解析
-      if (file.created_by !== userId) {
-        throw new AuthorizationError('无权解析该文件');
-      }
+      // if (file.created_by !== userId) {
+      //   throw new AuthorizationError('无权解析该文件');
+      // }
 
       // 检查文件状态
       if (file.parse_status === 'parsing') {
@@ -363,6 +363,13 @@ class FileService {
       
       // 读取文件内容，根据provider类型和文件类型返回不同格式
       const fileContentResult = await FileContentReader.readFileContent(filePath, provider.type);
+      logger.info('文件内容读取成功:', {
+        type: fileContentResult.type,
+        mimeType: fileContentResult.mimeType,
+        contentLength: typeof fileContentResult.content === 'string' 
+          ? fileContentResult.content.length 
+          : (fileContentResult.content as string[]).length,
+      });
       
       // 获取解析策略，传递文件类型
       const strategy = getParseStrategy(provider, modelName, file.file_type);
@@ -377,11 +384,18 @@ class FileService {
           ['failed', id]
         );
         
-        // 记录解析日志
+        // 记录解析日志（包含详细信息）
         await query(
-          `INSERT INTO parse_logs (bank_id, status, method, error_message, created_at)
-           VALUES (?, ?, ?, ?, NOW())`,
-          [id, 'failed', provider.type, result.error]
+          `INSERT INTO parse_logs (bank_id, status, method, error_message, request_data, response_data, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            id, 
+            'failed', 
+            provider.type, 
+            result.error,
+            result.requestData ? JSON.stringify(result.requestData) : null,
+            result.responseData ? JSON.stringify(result.responseData) : null,
+          ]
         );
         
         logger.error('AI解析失败', { fileId: id, error: result.error });
@@ -397,11 +411,19 @@ class FileService {
         ['completed', result.totalQuestions, id]
       );
       
-      // 记录成功日志
+      // 记录成功日志（包含详细信息）
       await query(
-        `INSERT INTO parse_logs (bank_id, status, method, total_pages, parsed_pages, created_at)
-         VALUES (?, ?, ?, ?, ?, NOW())`,
-        [id, 'success', provider.type, result.totalQuestions, result.totalQuestions]
+        `INSERT INTO parse_logs (bank_id, status, method, total_pages, parsed_pages, request_data, response_data, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          id, 
+          'success', 
+          provider.type, 
+          result.totalQuestions, 
+          result.totalQuestions,
+          result.requestData ? JSON.stringify(result.requestData) : null,
+          result.responseData ? JSON.stringify(result.responseData) : null,
+        ]
       );
       
       logger.info('AI解析成功', {

@@ -10,6 +10,19 @@ export class QwenParseStrategy extends BaseParseStrategy {
       // 构建消息内容（Qwen使用类似OpenAI的格式）
       const userMessage = this.buildUserMessage(fileContentResult, fileName);
       
+      // 准备请求数据记录
+      const requestData = {
+        fileContentType: fileContentResult.type,
+        fileMimeType: fileContentResult.mimeType,
+        fileName: fileName,
+        provider: this.provider.name,
+        model: this.modelName,
+        endpoint: this.provider.endpoint,
+        messageType: userMessage.content ? (Array.isArray(userMessage.content) ? 'multipart' : 'text') : 'unknown',
+      };
+      
+      logger.info('Qwen请求数据:', requestData);
+      
       const response = await this.axiosInstance.post(
         this.provider.endpoint,
         {
@@ -36,6 +49,18 @@ export class QwenParseStrategy extends BaseParseStrategy {
         }
       );
 
+      // 准备响应数据记录
+      const responseData = {
+        status: response.status,
+        statusText: response.statusText,
+        requestId: response.data.request_id,
+        usage: response.data.usage,
+        finishReason: response.data.output?.choices?.[0]?.finish_reason,
+        contentPreview: response.data.output?.choices?.[0]?.message?.content?.substring(0, 500) || '',
+      };
+      
+      logger.info('Qwen响应数据:', responseData);
+
       const content = response.data.output.choices[0].message.content;
       
       // 提取JSON部分
@@ -60,6 +85,8 @@ export class QwenParseStrategy extends BaseParseStrategy {
         success: true,
         questions: parsedData.questions,
         totalQuestions: parsedData.questions.length,
+        requestData,
+        responseData,
       };
     } catch (error: any) {
       logger.error('Qwen解析失败', {
@@ -69,11 +96,26 @@ export class QwenParseStrategy extends BaseParseStrategy {
         response: error.response?.data,
       });
 
+      const errorResponseData = {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        errorData: error.response?.data,
+      };
+
       return {
         success: false,
         questions: [],
         totalQuestions: 0,
         error: `Qwen解析失败: ${error.response?.data?.error?.message || error.message}`,
+        requestData: {
+          fileContentType: fileContentResult.type,
+          fileMimeType: fileContentResult.mimeType,
+          fileName: fileName,
+          provider: this.provider.name,
+          model: this.modelName,
+        },
+        responseData: errorResponseData,
       };
     }
   }

@@ -21,6 +21,8 @@ export interface ParseResult {
   questions: ParsedQuestion[];
   error?: string;
   totalQuestions: number;
+  requestData?: any; // 请求数据（fileContentResult、parts等）
+  responseData?: any; // API响应数据
 }
 
 export abstract class BaseParseStrategy {
