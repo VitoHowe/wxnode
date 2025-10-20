@@ -36,7 +36,7 @@ export abstract class BaseParseStrategy {
     this.modelName = modelName;
     this.fileType = fileType;
     this.axiosInstance = axios.create({
-      timeout: 120000, // 2分钟超时，文件解析可能需要较长时间
+      timeout: 300000, // 5分钟超时，适合大文件解析
     });
   }
 
@@ -44,8 +44,9 @@ export abstract class BaseParseStrategy {
    * 解析文件内容
    * @param fileContentResult 文件内容结果（可能是文本或base64）
    * @param fileName 文件名
+   * @param filePath 文件路径（用于大文件上传）
    */
-  abstract parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult>;
+  abstract parseFile(fileContentResult: FileContentResult, fileName: string, filePath: string): Promise<ParseResult>;
 
   /**
    * 构建系统提示词

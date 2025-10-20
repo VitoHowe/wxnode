@@ -374,8 +374,8 @@ class FileService {
       // 获取解析策略，传递文件类型
       const strategy = getParseStrategy(provider, modelName, file.file_type);
       
-      // 调用AI进行解析，传递文件内容结果
-      const result = await strategy.parseFile(fileContentResult, path.basename(filePath));
+      // 调用AI进行解析，传递文件内容结果和文件路径
+      const result = await strategy.parseFile(fileContentResult, path.basename(filePath), filePath);
       
       if (!result.success) {
         // 解析失败
@@ -450,24 +450,25 @@ class FileService {
 
 
   /**
-   * 保存题目到数据库
+   * 保存解析结果到数据库
+   * 将整个questions数组以JSON格式存储为一条记录
    */
   private async saveQuestions(bankId: number, questions: ParsedQuestion[]): Promise<void> {
-    for (const question of questions) {
+    try {
       await query(
-        `INSERT INTO questions (bank_id, type, content, options, answer, explanation, difficulty, tags, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        `INSERT INTO parse_results (bank_id, questions, total_questions, created_at, updated_at)
+         VALUES (?, ?, ?, NOW(), NOW())`,
         [
           bankId,
-          question.type,
-          question.content,
-          question.options ? JSON.stringify(question.options) : null,
-          question.answer,
-          question.explanation || null,
-          question.difficulty || 1,
-          question.tags ? JSON.stringify(question.tags) : null,
+          JSON.stringify(questions),
+          questions.length,
         ]
       );
+      
+      logger.info(`保存解析结果成功: BankID=${bankId}, TotalQuestions=${questions.length}`);
+    } catch (error) {
+      logger.error('保存解析结果失败:', error);
+      throw error;
     }
   }
 

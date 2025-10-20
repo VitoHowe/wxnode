@@ -5,25 +5,36 @@ import fs from 'fs';
 import { fileController } from '@/controllers/fileController';
 import { authenticateToken } from '@/middleware/auth';
 import { validateRequest, validationSchemas } from '@/middleware/validation';
+import { FileTypeMapper, BusinessType } from '@/utils/fileTypeMapper';
 
 const router = Router();
 
 // 文件上传配置
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadPath = process.env.UPLOAD_PATH || './uploads';
+    // 获取业务类型，默认为 question_bank
+    const businessType: BusinessType = (req.body.fileType as BusinessType) || 'question_bank';
     
-    // 确保上传目录存在
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    // 获取文件分类路径
+    const relativePath = FileTypeMapper.getStoragePath(businessType, file.mimetype, file.originalname);
+    
+    // 基础上传路径
+    const baseUploadPath = process.env.UPLOAD_PATH || './uploadFile';
+    
+    // 完整上传路径
+    const fullUploadPath = path.join(baseUploadPath, relativePath);
+    
+    // 确保上传目录存在（递归创建）
+    if (!fs.existsSync(fullUploadPath)) {
+      fs.mkdirSync(fullUploadPath, { recursive: true });
     }
     
-    cb(null, uploadPath);
+    cb(null, fullUploadPath);
   },
   filename: (req, file, cb) => {
-    // 生成唯一文件名
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    // 使用工具类生成唯一文件名
+    const uniqueFilename = FileTypeMapper.generateUniqueFilename(file.originalname);
+    cb(null, uniqueFilename);
   }
 });
 

@@ -3,7 +3,7 @@ import { FileContentResult } from '@/utils/fileContentReader';
 import { logger } from '@/utils/logger';
 
 export class OpenAIParseStrategy extends BaseParseStrategy {
-  async parseFile(fileContentResult: FileContentResult, fileName: string): Promise<ParseResult> {
+  async parseFile(fileContentResult: FileContentResult, fileName: string, filePath: string): Promise<ParseResult> {
     try {
       const systemPrompt = await this.buildSystemPrompt();
       
