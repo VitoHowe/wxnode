@@ -15,6 +15,10 @@ export class GeminiParseStrategy extends BaseParseStrategy {
     // 记录上传的文件ID，用于后续删除
     let uploadedFileId: string | undefined;
     
+    // 保存完整的响应数据，用于错误时记录
+    let fullResponseData: any = null;
+    let responseText: string | null = null;
+    
     try {
       const systemPrompt = await this.buildSystemPrompt();
       
@@ -83,8 +87,16 @@ export class GeminiParseStrategy extends BaseParseStrategy {
       
       logger.info('Gemini请求数据:', fullRequestData);
       
+      const apiUrl = `${this.provider.endpoint}/v1beta/models/${this.modelName}:generateContent`;
+      logger.info('🚀 开始调用Gemini API', {
+        url: apiUrl,
+        model: this.modelName,
+        partsCount: parts.length,
+        hasFileUri: parts.some((p: any) => p.file_data),
+      });
+      
       const response = await this.axiosInstance.post(
-        `${this.provider.endpoint}/v1beta/models/${this.modelName}:generateContent`,
+        apiUrl,
         {
           contents: [
             {
@@ -93,9 +105,7 @@ export class GeminiParseStrategy extends BaseParseStrategy {
           ],
           generationConfig: {
             temperature: 0.3,
-            topK: 1,
             topP: 1,
-            maxOutputTokens: 8192,
           },
         },
         {
@@ -103,8 +113,17 @@ export class GeminiParseStrategy extends BaseParseStrategy {
             'Content-Type': 'application/json',
             'x-goog-api-key': this.provider.api_key,
           },
+          timeout: 300000, // 5分钟超时
         }
       );
+      
+      logger.info('✅ Gemini API响应成功', {
+        status: response.status,
+        statusText: response.statusText,
+      });
+      
+      // 保存完整响应
+      fullResponseData = response.data;
       
       // 准备响应数据记录
       const responseDataForLog = {
@@ -118,16 +137,51 @@ export class GeminiParseStrategy extends BaseParseStrategy {
       logger.info('Gemini响应数据:', responseDataForLog);
       
       const text = response.data.candidates[0].content.parts[0].text;
+      responseText = text;
+      
+      logger.info('📝 完整响应文本', {
+        textLength: text.length,
+        textPreview: text.substring(0, 500),
+        fullText: text, // 记录完整文本
+      });
       
       // 提取JSON部分（Gemini可能返回带markdown的内容）
       const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error(`无法从Gemini响应中提取JSON数据${response.data}`);
+        logger.error('❌ 无法提取JSON数据', {
+          responseText: text,
+          textLength: text.length,
+          hasJsonCodeBlock: text.includes('```json'),
+          hasJsonObject: text.includes('{'),
+          fullResponse: response.data,
+        });
+        throw new Error('无法从Gemini响应中提取JSON数据');
       }
 
-      const parsedData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
+      const jsonString = jsonMatch[1] || jsonMatch[0];
+      logger.info('🔍 提取到的JSON字符串', {
+        jsonLength: jsonString.length,
+        jsonPreview: jsonString.substring(0, 500),
+      });
+      
+      let parsedData;
+      try {
+        parsedData = JSON.parse(jsonString);
+      } catch (parseError: any) {
+        logger.error('❌ JSON解析失败', {
+          error: parseError.message,
+          jsonString: jsonString,
+        });
+        throw new Error(`JSON解析失败: ${parseError.message}`);
+      }
 
       if (!parsedData.questions || !Array.isArray(parsedData.questions)) {
+        logger.error('❌ 格式错误：缺少questions数组', {
+          parsedData,
+          hasQuestions: !!parsedData.questions,
+          questionsType: typeof parsedData.questions,
+          dataKeys: Object.keys(parsedData),
+        });
         throw new Error('AI返回格式错误：缺少questions数组');
       }
 
@@ -155,19 +209,34 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         logger.info('解析失败，保留上传文件以便重试', { fileId: uploadedFileId });
       }
 
-      logger.error('Gemini解析失败', {
+      logger.error('❌ Gemini解析失败', {
         provider: this.provider.name,
         model: this.modelName,
-        error: error.message,
-        response: error.response?.data,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        // API错误响应
+        apiResponseStatus: error.response?.status,
+        apiResponseData: error.response?.data,
+        // 捕获的完整响应
+        fullResponseData: fullResponseData,
+        responseText: responseText,
+        responseTextLength: responseText?.length || 0,
       });
 
-      // 准备错误响应数据
+      // 准备完整的错误响应数据
       const errorResponseData = {
         error: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        errorData: error.response?.data,
+        errorStack: error.stack,
+        // API错误响应（网络错误、超时等）
+        apiStatus: error.response?.status,
+        apiStatusText: error.response?.statusText,
+        apiErrorData: error.response?.data,
+        // 成功响应但解析失败的情况
+        fullResponse: fullResponseData,
+        fullResponseText: responseText,
+        responseTextLength: responseText?.length || 0,
+        hasCandidates: fullResponseData?.candidates?.length > 0,
+        candidatesCount: fullResponseData?.candidates?.length || 0,
       };
 
       return {

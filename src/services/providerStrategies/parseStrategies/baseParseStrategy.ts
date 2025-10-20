@@ -102,8 +102,7 @@ export abstract class BaseParseStrategy {
 - 确保返回的是合法的JSON格式`;
     }
     
-    return `你是一个专业的题库解析助手。请将用户提供的文件内容解析为结构化的题目数据。
-
+    return `你是一个专业的题库解析助手。请将该文件内容解析为结构化的题目数据。
 要求：
 1. 识别题目类型：单选题(single)、多选题(multiple)、判断题(judge)、填空题(fill)、问答题(essay)
 2. 提取题目内容、选项、答案、解析等信息
@@ -126,8 +125,7 @@ export abstract class BaseParseStrategy {
 - type必须是：single、multiple、judge、fill、essay之一
 - 单选题和多选题必须有options数组
 - 判断题的answer应该是"正确"或"错误"
-- difficulty取值1-3，分别代表简单、中等、困难
-- 确保返回的是合法的JSON格式`;
+- difficulty取值1-3，分别代表简单、中等、困难`;
   }
 
   /**
