@@ -5,7 +5,7 @@ import fs from 'fs';
 import path from 'path';
 
 // 文件大小阈值：5MB，超过此大小的文件将上传到Gemini而非使用base64
-const FILE_SIZE_THRESHOLD = 5 * 1024 * 1024;
+const FILE_SIZE_THRESHOLD = 1 * 1024 * 1024;
 
 export class GeminiParseStrategy extends BaseParseStrategy {
   async parseFile(fileContentResult: FileContentResult, fileName: string, filePath: string): Promise<ParseResult> {
@@ -22,9 +22,9 @@ export class GeminiParseStrategy extends BaseParseStrategy {
     try {
       const systemPrompt = await this.buildSystemPrompt();
       
-      // 检查是否需要上传文件（仅处理非文本文件且超过阈值的情况）
+      // 检查是否需要上传文件（所有文件类型超过阈值都上传）
       let fileUri: string | undefined;
-      if (fileContentResult.type !== 'text' && filePath && fs.existsSync(filePath)) {
+      if (filePath && fs.existsSync(filePath)) {
         const fileStats = fs.statSync(filePath);
         const fileSize = fileStats.size;
         
@@ -369,6 +369,7 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         {
           headers: {
             'Content-Type': 'application/json',
+            'X-Goog-Upload-Header-Content-Type':mimeType,
             'x-goog-api-key': this.provider.api_key,
           }
         }
@@ -389,7 +390,7 @@ export class GeminiParseStrategy extends BaseParseStrategy {
         fileBuffer,
         {
           headers: {
-            'Content-Type': mimeType,
+            'X-Goog-Upload-Header-Content-Type': mimeType,
             'X-Goog-Upload-Command': 'upload, finalize',
             'X-Goog-Upload-Offset': '0',
           },
@@ -466,9 +467,28 @@ export class GeminiParseStrategy extends BaseParseStrategy {
   ): any[] {
     if (fileContentResult.type === 'text') {
       // 文本内容
+      const content = fileContentResult.content as string;
+      const promptText = `${systemPrompt}\n\n请解析以下文件内容：\n\n文件名：${fileName}\n文件内容：\n${content}`;
+      
+      // 如果有fileUri，使用file_data方式
+      if (fileUri) {
+        return [
+          {
+            text: `${systemPrompt}\n\n请解析以下文件中的题目内容，文件名：${fileName}`,
+          },
+          {
+            file_data: {
+              mime_type: fileContentResult.mimeType || 'text/plain',
+              file_uri: fileUri,
+            },
+          },
+        ];
+      }
+      
+      // 否则直接在text中包含内容
       return [
         {
-          text: `${systemPrompt}`,
+          text: promptText,
         },
       ];
     } else if (fileContentResult.type === 'base64') {
@@ -484,7 +504,6 @@ export class GeminiParseStrategy extends BaseParseStrategy {
           },
           {
             file_data: {
-              mime_type: mimeType,
               file_uri: fileUri,
             },
           },

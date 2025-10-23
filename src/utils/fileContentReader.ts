@@ -75,9 +75,13 @@ export class FileContentReader {
         if (err) {
           reject(new Error(`文件读取失败: ${err.message}`));
         } else {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeType = this.getMimeType(ext);
+          
           resolve({
             type: 'text',
             content: data,
+            mimeType,
           });
         }
       });
@@ -226,13 +230,20 @@ export class FileContentReader {
    */
   private static getMimeType(ext: string): string {
     const mimeTypes: Record<string, string> = {
+      // 图片格式
       '.jpg': 'image/jpeg',
       '.jpeg': 'image/jpeg',
       '.png': 'image/png',
       '.gif': 'image/gif',
       '.bmp': 'image/bmp',
       '.webp': 'image/webp',
+      // 文档格式
       '.pdf': 'application/pdf',
+      // 文本格式
+      '.txt': 'text/plain',
+      '.md': 'text/markdown',
+      '.json': 'application/json',
+      '.csv': 'text/csv',
     };
     return mimeTypes[ext] || 'application/octet-stream';
   }

@@ -26,7 +26,17 @@ winston.addColors(colors);
 const format = winston.format.combine(
   winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
   winston.format.colorize({ all: true }),
-  winston.format.printf((info) => `${info.timestamp} ${info.level}: ${info.message}`)
+  winston.format.printf((info) => {
+    const { timestamp, level, message, ...meta } = info;
+    let msg = `${timestamp} ${level}: ${message}`;
+    
+    // 如果有额外的元数据，格式化输出
+    // if (Object.keys(meta).length > 0) {
+    //   msg += '\n' + JSON.stringify(meta, null, 2);
+    // }
+    
+    return msg;
+  })
 );
 
 // 文件传输配置
