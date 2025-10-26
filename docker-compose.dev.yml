@@ -1,0 +1,42 @@
+# 开发环境 Docker Compose 配置
+# 使用方法：docker-compose -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # 只启动 MySQL（开发时在本地运行应用）
+  mysql:
+    image: mysql:8.0
+    container_name: wxnode-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-wxnode_db}
+      MYSQL_USER: ${DB_USER:-wxnode}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-wxnode123}
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_dev_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  # Redis（可选）
+  redis:
+    image: redis:7-alpine
+    container_name: wxnode-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    command: redis-server --appendonly yes
+    profiles:
+      - with-redis
+
+volumes:
+  mysql_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+

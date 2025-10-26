@@ -1,0 +1,59 @@
+# 依赖目录
+node_modules
+npm-debug.log
+pnpm-debug.log
+
+# 构建产物
+dist
+*.tsbuildinfo
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+.process
+
+# 日志文件
+logs
+*.log
+
+# 临时文件
+tmp
+temp
+*.tmp
+
+# 上传文件（运行时生成）
+uploads/*
+!uploads/.gitkeep
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# 测试
+coverage
+.nyc_output
+*.test.ts
+*.spec.ts
+
+# 文档
+*.md
+!README.md
+docs
+
+# 其他
+.DS_Store
+Thumbs.db
+*.pid
+*.seed
+*.pid.lock
+.cache
+

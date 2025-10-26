@@ -64,8 +64,14 @@ export const connectDB = async (): Promise<void> => {
     // 重新连接到指定数据库
     const mainConnection = await getPool().getConnection();
     
-    // 创建表结构
-    await createTables(mainConnection);
+    // 仅在首次启动或环境变量明确指定时才执行表创建和迁移
+    // 设置 DB_INIT=true 来启用数据库初始化
+    if (process.env.DB_INIT === 'true') {
+      logger.info('开始数据库初始化...');
+      await createTables(mainConnection);
+    } else {
+      logger.info('跳过数据库初始化（如需初始化，请设置环境变量 DB_INIT=true）');
+    }
     
     mainConnection.release();
     logger.info('数据库连接成功');

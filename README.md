@@ -53,30 +53,86 @@
 
 ## 🚀 快速开始
 
-### 1. 克隆项目
+### 方式一：Docker 部署（推荐） 🐳
+
+**适合**: 生产环境、快速体验
+
+```bash
+# 1. 准备环境变量
+cp env.docker.template .env
+vim .env  # 修改数据库密码、JWT密钥等
+
+# 2. 使用快速启动脚本
+# Windows:
+.\docker-quick-start.ps1
+
+# Linux/Mac:
+chmod +x docker-quick-start.sh
+./docker-quick-start.sh
+
+# 3. 或手动启动
+docker-compose up -d
+
+# 4. 查看日志
+docker-compose logs -f
+```
+
+**优势**:
+- ✅ 零依赖安装（只需 Docker）
+- ✅ 一键启动所有服务
+- ✅ 生产环境就绪
+- ✅ 数据持久化
+- ✅ 易于扩展和维护
+
+详细文档: [Docker使用指南.md](./Docker使用指南.md)
+
+---
+
+### 方式二：本地开发
+
+**适合**: 开发调试
+
+#### 1. 克隆项目
 ```bash
 git clone https://github.com/yourname/wxnode.git
 cd wxnode
 ```
 
-### 2. 安装依赖
+#### 2. 安装依赖
 ```bash
 pnpm install
 # 或者 npm install
 ```
 
-### 3. 配置环境
+#### 3. 配置环境
 ```bash
+# 复制环境变量模板
 cp .env.example .env
+
 # 编辑 .env 文件，配置数据库和微信参数
+# 重要：首次启动需要设置 DB_INIT=true
 ```
 
-### 4. 启动服务
+**重要环境变量**:
+- `DB_INIT=true` - 首次启动时设置为 true，之后改为 false
+- `ENABLE_REDIS=false` - 目前不需要 Redis，保持为 false
+
+#### 4. 启动数据库（可选，使用 Docker）
 ```bash
-pnpm run dev
+# 仅启动 MySQL（应用在本地运行）
+docker-compose -f docker-compose.dev.yml up -d
 ```
 
-### 5. 验证安装
+#### 5. 启动服务
+```bash
+# 首次启动（会初始化数据库）
+pnpm run dev
+
+# 初始化成功后，将 .env 中的 DB_INIT 改为 false
+# 然后重启服务即可
+```
+
+#### 6. 验证安装
 ```bash
 curl http://localhost:3001/health
 ```
@@ -132,6 +188,13 @@ DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=wxnode_db
 
+# 数据库初始化 ⚠️ 重要
+# 首次启动设为 true，之后设为 false 以提升启动速度
+DB_INIT=false
+
+# Redis配置（可选，目前不需要）
+ENABLE_REDIS=false
+
 # JWT配置
 JWT_SECRET=your-jwt-secret
 JWT_REFRESH_SECRET=your-refresh-secret
@@ -141,7 +204,19 @@ WECHAT_APPID=your_appid
 WECHAT_SECRET=your_secret
 ```
 
-详细配置指南: [配置指南.md](./配置指南.md)
+### 性能优化说明
+
+**启动速度优化**:
+- `DB_INIT=false` - 跳过数据库初始化，启动速度提升 50-70% 🚀
+- `ENABLE_REDIS=false` - 跳过 Redis 连接（项目暂不使用）
+
+**何时设置 `DB_INIT=true`**:
+- ✅ 首次克隆项目
+- ✅ 数据库结构有更新
+- ✅ 需要重建数据库表
+
+详细配置指南: [配置指南.md](./配置指南.md)  
+启动优化说明: [启动优化说明.md](./启动优化说明.md)
 
 ## 🧪 功能测试
 
@@ -176,23 +251,47 @@ wx.login({
 
 ```
 wxnode/
-├── 📁 src/
-│   ├── 🎯 controllers/     # 控制器层
-│   ├── 🔧 services/        # 业务逻辑层
-│   ├── 🗄️ config/          # 配置文件
-│   ├── 🛡️ middleware/      # 中间件
-│   ├── 🛣️ routes/          # 路由定义
-│   └── 🛠️ utils/           # 工具类
-├── 📁 logs/               # 日志文件
-├── 📁 uploads/            # 上传文件
-├── 📄 API接口文档.md      # API文档
-├── 📄 配置指南.md         # 配置指南
-└── 📄 package.json        # 项目配置
+├── 📁 src/                      # 源代码
+│   ├── 🎯 controllers/         # 控制器层
+│   ├── 🔧 services/            # 业务逻辑层
+│   ├── 🗄️ config/              # 配置文件
+│   ├── 🛡️ middleware/          # 中间件
+│   ├── 🛣️ routes/              # 路由定义
+│   └── 🛠️ utils/               # 工具类
+├── 📁 logs/                    # 日志文件
+├── 📁 uploads/                 # 上传文件
+├── 📁 backups/                 # 数据库备份
+├── 📁 migrations/              # 数据库迁移脚本
+├── 🐳 Dockerfile               # Docker 镜像定义
+├── 🐳 docker-compose.yml       # Docker 编排配置
+├── 🐳 docker-compose.dev.yml   # 开发环境配置
+├── 🐳 .dockerignore            # Docker 忽略文件
+├── 📄 env.docker.template      # Docker 环境变量模板
+├── 📄 .env.example             # 本地环境变量模板
+├── 📄 Makefile                 # 快捷命令
+├── 📄 API接口文档.md           # API文档
+├── 📄 Docker使用指南.md        # Docker 部署指南
+├── 📄 启动优化说明.md          # 启动优化文档
+├── 📄 代码优化说明.md          # 代码优化文档
+└── 📄 package.json             # 项目配置
 ```
 
 ## 🔄 版本历史
 
-### v1.2.0 (2025-09-28) - 重大升级 🎉
+### v2.1.0 (2025-10-26) - 性能优化 ⚡
+- ✅ **启动速度优化**: 提升 50-70% 启动速度
+- ✅ **可选 Redis**: 添加 ENABLE_REDIS 环境变量控制
+- ✅ **可选初始化**: 添加 DB_INIT 环境变量控制数据库初始化
+- ✅ **文档整合**: 整合所有 API 文档为统一文档
+- ✅ **代码清理**: 删除过时和重复的文档
+
+### v2.0.0 (2025-10-26) - 功能增强 🎉
+- ✅ **用户学习进度**: 新增用户学习进度管理功能
+- ✅ **解析结果管理**: 完善解析结果的完整 CRUD 接口
+- ✅ **AI 多供应商**: 支持 OpenAI/Gemini/Qwen 等多种 AI 供应商
+- ✅ **文件解析**: 支持使用 AI 解析题库文件
+
+### v1.2.0 (2025-09-28) - 重大升级 
 - ✅ **统一响应格式**: 所有接口标准化响应
 - ✅ **完善日志系统**: 详细的API调用日志
 - ✅ **代码优化**: 移除废弃代码，提高质量

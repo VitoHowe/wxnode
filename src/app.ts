@@ -11,6 +11,7 @@ import { notFoundHandler } from '@/middleware/notFoundHandler';
 import { logger } from '@/utils/logger';
 import { connectDB } from '@/config/database';
 import { connectRedis } from '@/config/redis';
+import { validateEnv, getConfigSummary } from '@/utils/envValidator';
 
 // 路由导入
 import authRoutes from '@/routes/auth';
@@ -22,7 +23,17 @@ import parseResultRoutes from '@/routes/parseResults';
 import userProgressRoutes from '@/routes/userProgress';
 
 // 加载环境变量
-dotenv.config({ path: '.process' });
+dotenv.config({ path: '.env' });
+
+// 验证环境变量
+try {
+  validateEnv();
+  const config = getConfigSummary();
+  logger.info('📋 系统配置:', config);
+} catch (error) {
+  logger.error('环境变量验证失败，请检查.env文件');
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,12 +82,24 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // 健康检查端点
-app.get('/health', (req, res) => {
-  res.status(200).json({
+app.get('/health', async (req, res) => {
+  const healthCheck = {
     status: 'OK',
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
-  });
+    version: '2.1.0',
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    services: {
+      database: 'connected',
+      redis: process.env.ENABLE_REDIS === 'true' ? 'enabled' : 'disabled',
+    },
+    memory: {
+      used: `${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB`,
+      total: `${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)} MB`,
+    },
+  };
+  
+  res.status(200).json(healthCheck);
 });
 
 // API路由
@@ -99,12 +122,14 @@ const startServer = async () => {
     await connectDB();
     logger.info('MySQL数据库连接成功');
 
-    // 连接Redis（可选）
-    try {
-      await connectRedis();
-      logger.info('Redis连接成功');
-    } catch (error) {
-      logger.warn('Redis连接失败，将以无缓存模式运行:', error);
+    // 连接Redis（可选，仅当环境变量启用时）
+    if (process.env.ENABLE_REDIS === 'true') {
+      try {
+        await connectRedis();
+        logger.info('Redis连接成功');
+      } catch (error) {
+        logger.warn('Redis连接失败，将以无缓存模式运行:', error);
+      }
     }
 
     // 启动HTTP服务器

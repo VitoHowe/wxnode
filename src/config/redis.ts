@@ -1,8 +1,9 @@
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 import { logger } from '@/utils/logger';
 
 // Redis客户端实例
-let redisClient: any;
+// 使用 ReturnType 自动推断类型，避免复杂的泛型类型定义
+let redisClient: ReturnType<typeof createClient> | null = null;
 
 /**
  * Redis配置
@@ -49,15 +50,18 @@ export const createRedisClient = () => {
  */
 export const connectRedis = async (): Promise<void> => {
   try {
-    redisClient = createRedisClient();
+    const client = createRedisClient();
     
     // 设置连接超时
-    const connectPromise = redisClient.connect();
+    const connectPromise = client.connect();
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Redis连接超时')), 5000);
     });
     
     await Promise.race([connectPromise, timeoutPromise]);
+    
+    // 连接成功后赋值
+    redisClient = client;
   } catch (error) {
     logger.error('Redis连接失败:', error);
     throw error;
@@ -88,9 +92,9 @@ export const closeRedis = async (): Promise<void> => {
  * Redis缓存工具类
  */
 export class RedisCache {
-  private static client: any;
+  private static client: ReturnType<typeof createClient>;
 
-  static init(client: any) {
+  static init(client: ReturnType<typeof createClient>) {
     this.client = client;
   }
 

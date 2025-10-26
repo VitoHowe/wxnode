@@ -7,10 +7,12 @@
     "dev": "nodemon -r tsconfig-paths/register src/app.ts",
     "build": "tsc",
     "start": "node -r tsconfig-paths/register dist/app.js",
+    "start:prod": "NODE_ENV=production node -r tsconfig-paths/register dist/app.js",
     "test": "jest",
-    "migrate": "npx knex migrate:latest",
-    "migrate:parse-logs": "ts-node -r tsconfig-paths/register scripts/migrate-parse-logs.ts",
-    "seed": "npx knex seed:run"
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "db:init": "DB_INIT=true npm run dev",
+    "logs:clear": "rm -rf logs/*.log"
   },
   "keywords": [
     "wechat",
@@ -29,7 +31,6 @@
     "helmet": "^7.0.0",
     "joi": "^17.9.2",
     "jsonwebtoken": "^9.0.2",
-    "knex": "^2.5.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "mysql2": "^3.6.0",
