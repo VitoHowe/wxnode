@@ -163,6 +163,32 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     // 迁移旧的questions表数据（如果存在）
     await migrateQuestionsToParseResults(connection);
 
+    // 创建用户学习进度表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_study_progress (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        user_id INT NOT NULL COMMENT '用户ID',
+        bank_id INT NOT NULL COMMENT '题库ID',
+        parse_result_id INT NULL COMMENT '关联的解析结果ID',
+        current_question_index INT NOT NULL DEFAULT 0 COMMENT '当前题目索引(从0开始)',
+        completed_count INT NOT NULL DEFAULT 0 COMMENT '已完成题目数量',
+        total_questions INT NOT NULL DEFAULT 0 COMMENT '总题目数量',
+        last_study_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后学习时间',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        UNIQUE KEY uk_user_bank (user_id, bank_id) COMMENT '用户和题库的唯一组合',
+        INDEX idx_user_id (user_id),
+        INDEX idx_bank_id (bank_id),
+        INDEX idx_last_study_time (last_study_time),
+        CONSTRAINT fk_progress_user FOREIGN KEY (user_id) 
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_progress_bank FOREIGN KEY (bank_id) 
+          REFERENCES question_banks(id) ON DELETE CASCADE,
+        CONSTRAINT fk_progress_parse_result FOREIGN KEY (parse_result_id) 
+          REFERENCES parse_results(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户学习进度表'
+    `);
+
     // 创建解析日志表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS parse_logs (

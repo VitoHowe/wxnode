@@ -6,7 +6,7 @@ import { NotFoundError } from '@/middleware/errorHandler';
 interface ParseResult {
   id: number;
   bank_id: number;
-  questions: any[]; // JSON 格式的题目数组
+  questions: any[];
   total_questions: number;
   created_at: string;
   updated_at: string;
@@ -14,45 +14,12 @@ interface ParseResult {
   file_name?: string;
 }
 
-// 查询参数
-interface GetParseResultsParams {
-  bank_id?: number;
-  page: number;
-  limit: number;
-}
-
 class ParseResultService {
   /**
-   * 获取解析结果列表
+   * 获取所有解析结果列表
    */
-  async getParseResults(params: GetParseResultsParams): Promise<{ 
-    results: ParseResult[]; 
-    total: number; 
-    pagination: any 
-  }> {
-    const { bank_id, page, limit } = params;
-    const offset = (page - 1) * limit;
-
+  async getAllParseResults(): Promise<ParseResult[]> {
     try {
-      // 构建查询条件
-      const whereConditions: string[] = [];
-      const queryParams: any[] = [];
-
-      if (bank_id) {
-        whereConditions.push('pr.bank_id = ?');
-        queryParams.push(bank_id);
-      }
-
-      const whereClause = whereConditions.length > 0 
-        ? `WHERE ${whereConditions.join(' AND ')}` 
-        : '';
-
-      // 获取总数
-      const countSql = `SELECT COUNT(*) as total FROM parse_results pr ${whereClause}`;
-      const countResult = await query(countSql, queryParams);
-      const total = countResult[0].total;
-
-      // 获取解析结果列表
       const sql = `
         SELECT 
           pr.*,
@@ -60,31 +27,17 @@ class ParseResultService {
           qb.file_original_name as file_name
         FROM parse_results pr 
         LEFT JOIN question_banks qb ON pr.bank_id = qb.id 
-        ${whereClause}
-        ORDER BY pr.created_at DESC 
-        LIMIT ? OFFSET ?
+        ORDER BY pr.created_at DESC
       `;
       
-      const results = await query(sql, [...queryParams, limit, offset]);
-
-      // 解析 JSON 格式的 questions
-      const formattedResults = results.map((result: any) => ({
+      const results = await query(sql, []);
+      
+      return results.map((result: any) => ({
         ...result,
         questions: typeof result.questions === 'string' 
           ? JSON.parse(result.questions) 
           : result.questions,
       }));
-
-      return {
-        results: formattedResults,
-        total,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit),
-        },
-      };
     } catch (error) {
       logger.error('获取解析结果列表失败:', error);
       throw error;
@@ -103,8 +56,7 @@ class ParseResultService {
           qb.file_original_name as file_name
         FROM parse_results pr 
         LEFT JOIN question_banks qb ON pr.bank_id = qb.id 
-        WHERE pr.id = ? 
-        LIMIT 1
+        WHERE pr.id = ?
       `;
       
       const results = await query(sql, [id]);
@@ -129,7 +81,7 @@ class ParseResultService {
   /**
    * 根据题库ID获取解析结果
    */
-  async getParseResultsByBankId(bankId: number): Promise<ParseResult[]> {
+  async getParseResultByBankId(bankId: number): Promise<ParseResult | null> {
     try {
       const sql = `
         SELECT 
@@ -138,7 +90,43 @@ class ParseResultService {
           qb.file_original_name as file_name
         FROM parse_results pr 
         LEFT JOIN question_banks qb ON pr.bank_id = qb.id 
-        WHERE pr.bank_id = ? 
+        WHERE pr.bank_id = ?
+        ORDER BY pr.created_at DESC
+        LIMIT 1
+      `;
+      
+      const results = await query(sql, [bankId]);
+      
+      if (results.length === 0) {
+        return null;
+      }
+
+      const result = results[0];
+      return {
+        ...result,
+        questions: typeof result.questions === 'string' 
+          ? JSON.parse(result.questions) 
+          : result.questions,
+      };
+    } catch (error) {
+      logger.error('根据题库ID获取解析结果失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据题库ID获取所有解析结果
+   */
+  async getAllParseResultsByBankId(bankId: number): Promise<ParseResult[]> {
+    try {
+      const sql = `
+        SELECT 
+          pr.*,
+          qb.name as bank_name,
+          qb.file_original_name as file_name
+        FROM parse_results pr 
+        LEFT JOIN question_banks qb ON pr.bank_id = qb.id 
+        WHERE pr.bank_id = ?
         ORDER BY pr.created_at DESC
       `;
       
@@ -151,7 +139,43 @@ class ParseResultService {
           : result.questions,
       }));
     } catch (error) {
-      logger.error('根据题库ID获取解析结果失败:', error);
+      logger.error('根据题库ID获取所有解析结果失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 更新解析结果
+   */
+  async updateParseResult(id: number, questions: any[]): Promise<ParseResult> {
+    try {
+      // 先检查记录是否存在
+      const existing = await this.getParseResultById(id);
+      if (!existing) {
+        throw new NotFoundError('解析结果不存在');
+      }
+
+      const sql = `
+        UPDATE parse_results 
+        SET questions = ?, 
+            total_questions = ?,
+            updated_at = NOW()
+        WHERE id = ?
+      `;
+      
+      await query(sql, [
+        JSON.stringify(questions),
+        questions.length,
+        id
+      ]);
+      
+      logger.info(`解析结果更新成功: ID=${id}, 题目数量=${questions.length}`);
+      
+      // 返回更新后的数据
+      const updated = await this.getParseResultById(id);
+      return updated!;
+    } catch (error) {
+      logger.error('更新解析结果失败:', error);
       throw error;
     }
   }
@@ -161,8 +185,8 @@ class ParseResultService {
    */
   async deleteParseResult(id: number): Promise<void> {
     try {
+      // 先检查记录是否存在
       const result = await this.getParseResultById(id);
-      
       if (!result) {
         throw new NotFoundError('解析结果不存在');
       }
