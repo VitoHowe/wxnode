@@ -56,13 +56,13 @@ export abstract class BaseParseStrategy {
       // 根据文件类型获取对应的提示词配置
       const settingType = this.fileType === 'knowledge_base' ? 'knowledge_format' : 'question_parse_format';
       const setting = await systemService.getSetting<{ prompt?: string }>(settingType);
-      
+
       // 如果配置存在且有prompt字段，使用自定义提示词
       if (setting && setting.payload && setting.payload.prompt) {
         logger.info('使用自定义提示词', { fileType: this.fileType, settingType });
         return setting.payload.prompt;
       }
-      
+
       // 否则使用默认提示词
       logger.info('使用默认提示词', { fileType: this.fileType });
       return this.getDefaultPrompt();
@@ -101,7 +101,7 @@ export abstract class BaseParseStrategy {
 - answer为知识点详细内容
 - 确保返回的是合法的JSON格式`;
     }
-    
+
     return `你是一个专业的题库解析助手。请将该文件内容解析为结构化的题目数据。
 要求：
 1. 识别题目类型：单选题(single)、多选题(multiple)、判断题(judge)、填空题(fill)、问答题(essay)
@@ -120,7 +120,7 @@ export abstract class BaseParseStrategy {
     }
   ]
 }
-
+4.题目章节，如果文件中存在章节信息，需要将题目归类到对应的章节中
 注意事项：
 - type必须是：single、multiple、judge、fill、essay之一
 - 单选题和多选题必须有options数组

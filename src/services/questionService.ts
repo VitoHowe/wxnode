@@ -6,6 +6,8 @@ import { NotFoundError } from '@/middleware/errorHandler';
 interface Question {
   id: number;
   bank_id: number;
+  chapter_id?: number;
+  question_no?: string;
   type: 'single' | 'multiple' | 'judge' | 'fill' | 'essay';
   content: string;
   options?: any;
@@ -377,6 +379,96 @@ class QuestionService {
       return questions;
     } catch (error) {
       logger.error('随机获取题目失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据章节ID获取题目（支持分页）
+   */
+  async getQuestionsByChapterId(
+    chapterId: number,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ questions: Question[]; total: number; pagination: any }> {
+    const offset = (page - 1) * limit;
+
+    try {
+      // 获取总数
+      const countSql = 'SELECT COUNT(*) as total FROM questions WHERE chapter_id = ?';
+      const countResult = await query(countSql, [chapterId]);
+      const total = countResult[0].total;
+
+      // 获取题目列表
+      const sql = `
+        SELECT q.*, 
+               qb.name as bank_name,
+               qc.chapter_name
+        FROM questions q 
+        LEFT JOIN question_banks qb ON q.bank_id = qb.id
+        LEFT JOIN question_chapters qc ON q.chapter_id = qc.id
+        WHERE q.chapter_id = ?
+        ORDER BY q.question_no ASC, q.id ASC
+        LIMIT ? OFFSET ?
+      `;
+      
+      const questions = await query(sql, [chapterId, limit, offset]);
+
+      return {
+        questions,
+        total,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error('根据章节ID获取题目失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 批量创建题目（支持章节）
+   */
+  async createQuestionsWithChapter(
+    bankId: number,
+    chapterId: number,
+    questions: any[]
+  ): Promise<void> {
+    try {
+      const sql = `
+        INSERT INTO questions (
+          bank_id, chapter_id, question_no, type, content, 
+          options, answer, explanation, difficulty, tags, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      `;
+
+      for (const question of questions) {
+        await query(sql, [
+          bankId,
+          chapterId,
+          question.question_no || question.question || null,
+          question.type,
+          question.content,
+          question.options ? JSON.stringify(question.options) : null,
+          question.answer,
+          question.explanation || null,
+          question.difficulty || 1,
+          question.tags ? JSON.stringify(question.tags) : null,
+        ]);
+      }
+
+      logger.info('批量创建章节题目成功', {
+        bankId,
+        chapterId,
+        count: questions.length,
+      });
+    } catch (error) {
+      logger.error('批量创建章节题目失败:', error);
       throw error;
     }
   }

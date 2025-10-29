@@ -1,0 +1,35 @@
+﻿# 服务器配置
+PORT=3001
+NODE_ENV=development
+
+# 数据库配置
+DB_HOST=189.1.217.66
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=wyx19960412
+DB_NAME=wxnode_db
+
+# Redis配置
+REDIS_HOST=189.1.217.66
+REDIS_PORT=6379
+REDIS_PASSWORD=wyx19960412
+
+# JWT配置
+JWT_SECRET=wxnode-super-secret-jwt-key-2024
+JWT_REFRESH_SECRET=wxnode-refresh-secret-key-2024
+JWT_EXPIRES_IN=7d
+
+# 微信小程序配置
+WECHAT_APPID=wxd4ebde93a8cc9f00
+WECHAT_SECRET=475bd9f4ec8b19eed13581155a3ca663
+
+# 文件上传配置
+UPLOAD_PATH=./uploads
+MAX_FILE_SIZE=50MB
+
+# 解析服务配置
+PARSE_SERVICE_URL=http://localhost:8008
+
+# 日志配置
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
