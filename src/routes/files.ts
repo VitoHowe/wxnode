@@ -346,4 +346,65 @@ router.get('/:id/parse-status', validateRequest(validationSchemas.idParam), file
  */
 router.delete('/:id', validateRequest(validationSchemas.idParam), fileController.deleteFile);
 
+/**
+ * @swagger
+ * /api/files/upload-json:
+ *   post:
+ *     tags: [文件管理]
+ *     summary: 上传JSON文件并直接导入题库
+ *     description: 上传已解析完成的JSON文件，系统会根据文件名创建题库，并按章节拆分存储题目
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: JSON文件（必须包含questions数组）
+ *     responses:
+ *       200:
+ *         description: 导入成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: integer
+ *                   example: 200
+ *                 message:
+ *                   type: string
+ *                   example: "JSON文件导入成功"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 10
+ *                     name:
+ *                       type: string
+ *                       example: "gemin"
+ *                     description:
+ *                       type: string
+ *                       example: "从JSON文件导入，共1000题"
+ *                     parse_status:
+ *                       type: string
+ *                       example: "completed"
+ *                     total_questions:
+ *                       type: integer
+ *                       example: 1000
+ *       400:
+ *         description: 文件格式错误或JSON格式不正确
+ *       401:
+ *         description: 未登录
+ */
+router.post('/upload-json', upload.single('file'), fileController.uploadJsonFile);
+
 export default router;

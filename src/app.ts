@@ -20,6 +20,7 @@ import questionRoutes from '@/routes/questions';
 import systemRoutes from '@/routes/system';
 import parseResultRoutes from '@/routes/parseResults';
 import userProgressRoutes from '@/routes/userProgress';
+import chapterRoutes from '@/routes/chapters';
 
 // 加载环境变量
 dotenv.config({ path: '.process' });
@@ -87,6 +88,8 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/parse-results', parseResultRoutes);
 app.use('/api/user-progress', userProgressRoutes);
+app.use('/api/question-banks', chapterRoutes);
+app.use('/api/chapters', chapterRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);

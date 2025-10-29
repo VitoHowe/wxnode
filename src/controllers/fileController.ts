@@ -135,6 +135,28 @@ class FileController {
 
     return ResponseUtil.success(res, null, '删除成功');
   });
+
+  /**
+   * 上传JSON文件并直接导入题库
+   */
+  uploadJsonFile = asyncHandler(async (req: Request, res: Response) => {
+    if (!req.file) {
+      return ResponseUtil.validationError(res, '请选择要上传的JSON文件');
+    }
+
+    if (!req.user) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
+    // 验证文件类型
+    if (!req.file.originalname.toLowerCase().endsWith('.json')) {
+      return ResponseUtil.validationError(res, '只支持JSON格式文件');
+    }
+
+    const result = await fileService.uploadJsonFile(req.file, req.user.userId);
+
+    return ResponseUtil.success(res, result, 'JSON文件导入成功');
+  });
 }
 
 export const fileController = new FileController();

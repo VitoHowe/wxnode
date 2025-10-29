@@ -4,7 +4,7 @@
   "description": "微信小程序题库管理后端系统",
   "main": "dist/app.js",
   "scripts": {
-    "dev": "nodemon -r tsconfig-paths/register src/app.ts",
+    "dev": "nodemon",
     "build": "tsc",
     "start": "node -r tsconfig-paths/register dist/app.js",
     "test": "jest",
