@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS `questions` (
   INDEX `idx_type` (`type`),
   INDEX `idx_difficulty` (`difficulty`),
   INDEX `idx_created_at` (`created_at`),
-  CONSTRAINT `fk_questions_bank_id` FOREIGN KEY (`bank_id`) 
+  CONSTRAINT `fk_questions_bank_id_v3` FOREIGN KEY (`bank_id`) 
     REFERENCES `question_banks` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_questions_chapter_id` FOREIGN KEY (`chapter_id`) 
+  CONSTRAINT `fk_questions_chapter_id_v3` FOREIGN KEY (`chapter_id`) 
     REFERENCES `question_chapters` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表';
 

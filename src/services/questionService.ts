@@ -1,5 +1,6 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
+import { replaceQuestionImages } from '@/utils/imageParser';
 import { NotFoundError } from '@/middleware/errorHandler';
 
 // 题目接口
@@ -152,22 +153,38 @@ class QuestionService {
 
     try {
       // 获取总数
-      const countSql = 'SELECT COUNT(*) as total FROM question_banks WHERE parse_status = "completed"';
-      const countResult = await query(countSql);
+      const countSql = `SELECT COUNT(*) as total FROM question_banks WHERE parse_status = ?`;
+      const countResult = await query(countSql, ['completed']);
       const total = countResult[0].total;
 
-      // 获取题库列表
+      // 获取题库列表（使用 LEFT JOIN 替代子查询）
       const sql = `
-        SELECT qb.*, u.nickname as creator_name,
-               (SELECT COUNT(*) FROM questions WHERE bank_id = qb.id) as question_count
+        SELECT 
+          qb.id,
+          qb.name,
+          qb.description,
+          qb.file_type,
+          qb.file_original_name,
+          qb.file_path,
+          qb.file_size,
+          qb.parse_status,
+          qb.created_by,
+          qb.created_at,
+          qb.updated_at,
+          u.nickname as creator_name,
+          COUNT(q.id) as question_count
         FROM question_banks qb 
-        LEFT JOIN users u ON qb.created_by = u.id 
-        WHERE qb.parse_status = 'completed'
+        LEFT JOIN users u ON qb.created_by = u.id
+        LEFT JOIN questions q ON q.bank_id = qb.id
+        WHERE qb.parse_status = ?
+        GROUP BY qb.id, qb.name, qb.description, qb.file_type, qb.file_original_name, 
+                 qb.file_path, qb.file_size, qb.parse_status, qb.created_by, 
+                 qb.created_at, qb.updated_at, u.nickname
         ORDER BY qb.created_at DESC 
         LIMIT ? OFFSET ?
       `;
       
-      const banks = await query(sql, [limit, offset]);
+      const banks = await query(sql, ['completed', limit, offset]);
 
       return {
         banks,
@@ -384,35 +401,93 @@ class QuestionService {
   }
 
   /**
-   * 根据章节ID获取题目（支持分页）
+   * 根据章节ID获取题目（支持分页、全量、单题模式）
+   * @param questionNumber - 题号（从1开始），传入时返回单个题目
    */
   async getQuestionsByChapterId(
     chapterId: number,
     page: number = 1,
-    limit: number = 20
-  ): Promise<{ questions: Question[]; total: number; pagination: any }> {
-    const offset = (page - 1) * limit;
+    limit: number = 0,  // 默认0表示返回全部
+    questionNumber?: number  // 题号，传入时返回单个题目
+  ): Promise<{ questions?: Question[]; question?: Question; total: number; pagination?: any; currentNumber?: number; hasNext?: boolean; hasPrev?: boolean }> {
+    const chapterIdNum = parseInt(String(chapterId));
 
     try {
       // 获取总数
       const countSql = 'SELECT COUNT(*) as total FROM questions WHERE chapter_id = ?';
-      const countResult = await query(countSql, [chapterId]);
+      const countResult = await query(countSql, [chapterIdNum]);
       const total = countResult[0].total;
 
-      // 获取题目列表
-      const sql = `
-        SELECT q.*, 
-               qb.name as bank_name,
-               qc.chapter_name
-        FROM questions q 
-        LEFT JOIN question_banks qb ON q.bank_id = qb.id
-        LEFT JOIN question_chapters qc ON q.chapter_id = qc.id
-        WHERE q.chapter_id = ?
-        ORDER BY q.question_no ASC, q.id ASC
-        LIMIT ? OFFSET ?
-      `;
+      // 单题模式
+      if (questionNumber !== undefined) {
+        const qNum = parseInt(String(questionNumber));
+        
+        // 检查题号是否超出范围
+        if (qNum < 1 || qNum > total) {
+          return {
+            total,
+            currentNumber: qNum
+          };
+        }
+
+        // 获取指定题号的题目（OFFSET从0开始，所以是qNum-1）
+        const sql = `
+          SELECT q.*, 
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q 
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          LEFT JOIN question_chapters qc ON q.chapter_id = qc.id
+          WHERE q.chapter_id = ?
+          ORDER BY CAST(q.question_no AS UNSIGNED) ASC, q.id ASC
+          LIMIT 1 OFFSET ${qNum - 1}
+        `;
+        
+        const questions = await query(sql, [chapterIdNum]);
+        
+        return {
+          question: questions[0] || null,
+          total,
+          currentNumber: qNum,
+          hasNext: qNum < total,
+          hasPrev: qNum > 1
+        };
+      }
+
+      let sql: string;
       
-      const questions = await query(sql, [chapterId, limit, offset]);
+      // limit=0 表示获取全部（答题模式）
+      if (limit === 0) {
+        sql = `
+          SELECT q.*, 
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q 
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          LEFT JOIN question_chapters qc ON q.chapter_id = qc.id
+          WHERE q.chapter_id = ?
+          ORDER BY CAST(q.question_no AS UNSIGNED) ASC, q.id ASC
+        `;
+      } else {
+        // 分页模式（题库管理）
+        const offset = (page - 1) * limit;
+        const limitNum = Math.min(Math.max(parseInt(String(limit)), 1), 100);
+        const offsetNum = Math.max(parseInt(String(offset)), 0);
+        
+        sql = `
+          SELECT q.*, 
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q 
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          LEFT JOIN question_chapters qc ON q.chapter_id = qc.id
+          WHERE q.chapter_id = ?
+          ORDER BY CAST(q.question_no AS UNSIGNED) ASC, q.id ASC
+          LIMIT ${limitNum} OFFSET ${offsetNum}
+        `;
+      }
+      
+      const questions = await query(sql, [chapterIdNum]);
 
       return {
         questions,

@@ -24,16 +24,17 @@ class ChapterController {
   }
 
   /**
-   * 获取章节详情
+   * 获取章节详情（验证题库归属）
    */
   async getChapterById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const bankId = parseInt(req.params.bankId);
       const chapterId = parseInt(req.params.chapterId);
       
-      const chapter = await chapterService.getChapterById(chapterId);
+      const chapter = await chapterService.getChapterByBankIdAndChapterId(bankId, chapterId);
       
       if (!chapter) {
-        ResponseUtil.notFoundError(res, '章节不存在');
+        ResponseUtil.notFoundError(res, '章节不存在或不属于该题库');
         return;
       }
       
@@ -44,17 +45,34 @@ class ChapterController {
   }
 
   /**
-   * 获取章节的题目列表（支持分页）
+   * 获取章节的题目列表（支持分页、全量、单题模式，验证题库归属）
    */
   async getChapterQuestions(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const bankId = parseInt(req.params.bankId);
       const chapterId = parseInt(req.params.chapterId);
       const page = parseInt(req.query.page as string) || 1;
-      const limit = parseInt(req.query.limit as string) || 20;
+      // limit参数：不传或传0表示返回全部（答题场景），传具体数值表示分页（管理场景）
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 0;
+      // questionNumber参数：题号（从1开始），传入时返回单个题目（逐题答题场景）
+      const questionNumber = req.query.questionNumber ? parseInt(req.query.questionNumber as string) : undefined;
       
-      const result = await questionService.getQuestionsByChapterId(chapterId, page, limit);
+      // 验证章节是否属于该题库
+      const chapter = await chapterService.getChapterByBankIdAndChapterId(bankId, chapterId);
+      if (!chapter) {
+        ResponseUtil.notFoundError(res, '章节不存在或不属于该题库');
+        return;
+      }
       
-      ResponseUtil.success(res, result, '获取章节题目成功');
+      const result = await questionService.getQuestionsByChapterId(chapterId, page, limit, questionNumber);
+      
+      // 单题模式且超出范围
+      if (questionNumber !== undefined && !result.question) {
+        ResponseUtil.success(res, { total: result.total }, '没有更多题目了');
+        return;
+      }
+      
+      ResponseUtil.success(res, result, questionNumber !== undefined ? '获取题目成功' : '获取章节题目成功');
     } catch (error) {
       next(error);
     }
@@ -76,11 +94,19 @@ class ChapterController {
   }
 
   /**
-   * 删除章节（级联删除题目）
+   * 删除章节（级联删除题目，验证题库归属）
    */
   async deleteChapter(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
+      const bankId = parseInt(req.params.bankId);
       const chapterId = parseInt(req.params.chapterId);
+      
+      // 验证章节是否属于该题库
+      const chapter = await chapterService.getChapterByBankIdAndChapterId(bankId, chapterId);
+      if (!chapter) {
+        ResponseUtil.notFoundError(res, '章节不存在或不属于该题库');
+        return;
+      }
       
       await chapterService.deleteChapter(chapterId);
       

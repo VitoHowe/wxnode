@@ -60,7 +60,7 @@ router.use(authenticateToken);
  *       401:
  *         description: 未登录
  */
-router.get('/banks/:bankId/chapters', chapterController.getChaptersByBankId);
+router.get('/:bankId/chapters', chapterController.getChaptersByBankId);
 
 /**
  * @swagger
@@ -84,18 +84,24 @@ router.get('/banks/:bankId/chapters', chapterController.getChaptersByBankId);
  *       401:
  *         description: 未登录
  */
-router.get('/banks/:bankId/chapters/stats', chapterController.getBankChapterStats);
+router.get('/:bankId/chapters/stats', chapterController.getBankChapterStats);
 
 /**
  * @swagger
- * /api/chapters/{chapterId}:
+ * /api/question-banks/{bankId}/chapters/{chapterId}:
  *   get:
  *     tags: [章节管理]
  *     summary: 获取章节详情
- *     description: 获取指定章节的详细信息
+ *     description: 获取指定题库的指定章节详细信息
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: bankId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 题库ID
  *       - in: path
  *         name: chapterId
  *         required: true
@@ -108,20 +114,26 @@ router.get('/banks/:bankId/chapters/stats', chapterController.getBankChapterStat
  *       401:
  *         description: 未登录
  *       404:
- *         description: 章节不存在
+ *         description: 章节不存在或不属于该题库
  */
-router.get('/:chapterId', chapterController.getChapterById);
+router.get('/:bankId/chapters/:chapterId', chapterController.getChapterById);
 
 /**
  * @swagger
- * /api/chapters/{chapterId}/questions:
+ * /api/question-banks/{bankId}/chapters/{chapterId}/questions:
  *   get:
  *     tags: [章节管理]
  *     summary: 获取章节的题目列表
- *     description: 获取指定章节的题目，支持分页
+ *     description: 获取指定题库的指定章节的题目，支持分页和全量获取。默认返回全部题目（适合答题场景），设置limit可分页查询
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: bankId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 题库ID
  *       - in: path
  *         name: chapterId
  *         required: true
@@ -134,15 +146,15 @@ router.get('/:chapterId', chapterController.getChapterById);
  *           type: integer
  *           minimum: 1
  *           default: 1
- *         description: 页码
+ *         description: 页码（仅在limit>0时有效）
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *           minimum: 1
+ *           minimum: 0
  *           maximum: 100
- *           default: 20
- *         description: 每页数量
+ *           default: 0
+ *         description: 每页数量，0表示返回全部（答题场景），>0表示分页查询（管理场景）
  *     responses:
  *       200:
  *         description: 获取成功
@@ -164,6 +176,9 @@ router.get('/:chapterId', chapterController.getChapterById);
  *                       type: array
  *                       items:
  *                         type: object
+ *                     total:
+ *                       type: integer
+ *                       description: 该章节的题目总数
  *                     pagination:
  *                       type: object
  *                       properties:
@@ -177,19 +192,27 @@ router.get('/:chapterId', chapterController.getChapterById);
  *                           type: integer
  *       401:
  *         description: 未登录
+ *       404:
+ *         description: 章节不存在或不属于该题库
  */
-router.get('/:chapterId/questions', chapterController.getChapterQuestions);
+router.get('/:bankId/chapters/:chapterId/questions', chapterController.getChapterQuestions);
 
 /**
  * @swagger
- * /api/chapters/{chapterId}:
+ * /api/question-banks/{bankId}/chapters/{chapterId}:
  *   delete:
  *     tags: [章节管理]
  *     summary: 删除章节
- *     description: 删除指定章节（级联删除该章节下的所有题目）
+ *     description: 删除指定题库的指定章节（级联删除该章节下的所有题目）
  *     security:
  *       - bearerAuth: []
  *     parameters:
+ *       - in: path
+ *         name: bankId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 题库ID
  *       - in: path
  *         name: chapterId
  *         required: true
@@ -202,8 +225,8 @@ router.get('/:chapterId/questions', chapterController.getChapterQuestions);
  *       401:
  *         description: 未登录
  *       404:
- *         description: 章节不存在
+ *         description: 章节不存在或不属于该题库
  */
-router.delete('/:chapterId', chapterController.deleteChapter);
+router.delete('/:bankId/chapters/:chapterId', chapterController.deleteChapter);
 
 export default router;

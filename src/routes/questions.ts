@@ -86,32 +86,6 @@ router.get('/', validateRequest(validationSchemas.questionQuery), questionContro
 
 /**
  * @swagger
- * /api/questions/{id}:
- *   get:
- *     tags: [题库管理]
- *     summary: 获取题目详情
- *     description: 根据题目ID获取详细信息
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: 题目ID
- *     responses:
- *       200:
- *         description: 获取成功
- *       401:
- *         description: 未登录
- *       404:
- *         description: 题目不存在
- */
-router.get('/:id', validateRequest(validationSchemas.idParam), questionController.getQuestionById);
-
-/**
- * @swagger
  * /api/questions/banks:
  *   get:
  *     tags: [题库管理]
@@ -168,6 +142,32 @@ router.get('/banks', validateRequest(validationSchemas.pagination), questionCont
  *         description: 题库不存在
  */
 router.get('/banks/:id', validateRequest(validationSchemas.idParam), questionController.getQuestionBankById);
+
+/**
+ * @swagger
+ * /api/questions/{id}:
+ *   get:
+ *     tags: [题库管理]
+ *     summary: 获取题目详情
+ *     description: 根据题目ID获取详细信息
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 题目ID
+ *     responses:
+ *       200:
+ *         description: 获取成功
+ *       401:
+ *         description: 未登录
+ *       404:
+ *         description: 题目不存在
+ */
+router.get('/:id', validateRequest(validationSchemas.idParam), questionController.getQuestionById);
 
 /**
  * @swagger

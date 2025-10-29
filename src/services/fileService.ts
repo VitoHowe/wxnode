@@ -452,24 +452,37 @@ class FileService {
 
 
   /**
-   * 保存解析结果到数据库
-   * 1. 先保存原始JSON到parse_results表（作为备份）
-   * 2. 按章节拆分保存到question_chapters和questions表
+   * 保存解析结果
+   * 1. 将解析结果保存为JSON文件
+   * 2. 更新题库记录中的解析文件路径
+   * 3. 按章节拆分保存到question_chapters和questions表
    */
-  private async saveQuestions(bankId: number, questions: ParsedQuestion[]): Promise<void> {
+  private async saveQuestions(bankId: number, questions: ParsedQuestion[], originalFilePath?: string): Promise<void> {
     try {
-      // 1. 保存原始JSON到parse_results表（作为备份）
+      // 1. 保存解析结果为JSON文件
+      const baseUploadPath = process.env.UPLOAD_PATH || './uploadFile';
+      const parsedJsonDir = path.join(baseUploadPath, 'question_bank/parsed');
+      
+      // 确保目录存在
+      if (!fs.existsSync(parsedJsonDir)) {
+        fs.mkdirSync(parsedJsonDir, { recursive: true });
+      }
+      
+      const jsonFileName = `parsed_${bankId}_${Date.now()}.json`;
+      const jsonFilePath = path.join(parsedJsonDir, jsonFileName);
+      
+      // 写入JSON文件
+      fs.writeFileSync(jsonFilePath, JSON.stringify({ questions }, null, 2), 'utf-8');
+      
+      // 更新题库记录中的解析文件路径
       await query(
-        `INSERT INTO parse_results (bank_id, questions, total_questions, created_at, updated_at)
-         VALUES (?, ?, ?, NOW(), NOW())`,
-        [
-          bankId,
-          JSON.stringify(questions),
-          questions.length,
-        ]
+        `UPDATE question_banks 
+         SET parsed_json_path = ?, updated_at = NOW() 
+         WHERE id = ?`,
+        [jsonFilePath, bankId]
       );
       
-      logger.info(`保存原始解析结果成功: BankID=${bankId}, TotalQuestions=${questions.length}`);
+      logger.info(`解析结果已保存为JSON文件: BankID=${bankId}, Path=${jsonFilePath}, TotalQuestions=${questions.length}`);
 
       // 2. 按章节拆分保存
       await this.saveQuestionsByChapter(bankId, questions);
@@ -639,17 +652,16 @@ class FileService {
 
       logger.info('题库记录创建成功', { bankId, bankName });
 
-      // 5. 保存原始JSON到parse_results表（作为备份）
-      await query(
-        `INSERT INTO parse_results (bank_id, questions, total_questions, created_at, updated_at)
-         VALUES (?, ?, ?, NOW(), NOW())`,
-        [bankId, JSON.stringify(questions), questions.length]
-      );
-
-      // 6. 按章节拆分保存题目
+      // 5. 按章节拆分保存题目
       await this.saveQuestionsByChapter(bankId, questions);
+      
+      logger.info('原始JSON文件已保存', { 
+        bankId, 
+        filePath: file.path,
+        fileSize: file.size 
+      });
 
-      // 7. 记录成功日志
+      // 6. 记录成功日志
       await query(
         `INSERT INTO parse_logs (bank_id, status, method, total_pages, parsed_pages, created_at)
          VALUES (?, ?, ?, ?, ?, NOW())`,

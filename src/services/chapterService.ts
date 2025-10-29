@@ -59,6 +59,26 @@ class ChapterService {
   }
 
   /**
+   * 获取指定题库的指定章节（验证归属关系）
+   */
+  async getChapterByBankIdAndChapterId(bankId: number, chapterId: number): Promise<Chapter | null> {
+    try {
+      const sql = 'SELECT * FROM question_chapters WHERE id = ? AND bank_id = ? LIMIT 1';
+      const chapters = await query(sql, [chapterId, bankId]);
+      
+      if (chapters.length === 0) {
+        return null;
+      }
+      
+      logger.info('获取章节成功', { bankId, chapterId });
+      return chapters[0] as Chapter;
+    } catch (error) {
+      logger.error('获取章节失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 创建章节
    */
   async createChapter(

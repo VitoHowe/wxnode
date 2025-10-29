@@ -45,5 +45,31 @@ router.post('/:bankId', userProgressController.saveProgress);
  */
 router.delete('/:bankId', userProgressController.resetProgress);
 
+/**
+ * @route GET /api/user-progress/:bankId/chapters
+ * @desc 获取题库所有章节的学习进度
+ * @param bankId - 题库ID
+ */
+router.get('/:bankId/chapters', userProgressController.getBankChaptersProgress);
+
+/**
+ * @route GET /api/user-progress/:bankId/chapters/:chapterId
+ * @desc 获取用户在指定章节的学习进度
+ * @param bankId - 题库ID
+ * @param chapterId - 章节ID
+ */
+router.get('/:bankId/chapters/:chapterId', userProgressController.getChapterProgress);
+
+/**
+ * @route POST /api/user-progress/:bankId/chapters/:chapterId
+ * @desc 保存/更新章节学习进度
+ * @param bankId - 题库ID
+ * @param chapterId - 章节ID
+ * @body current_question_number - 当前题号（必填）
+ * @body completed_count - 已完成题目数（可选）
+ * @body total_questions - 总题目数（必填）
+ */
+router.post('/:bankId/chapters/:chapterId', userProgressController.saveChapterProgress);
+
 export default router;
 

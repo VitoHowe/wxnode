@@ -10,6 +10,10 @@
     "test": "jest",
     "migrate": "npx knex migrate:latest",
     "migrate:parse-logs": "ts-node -r tsconfig-paths/register scripts/migrate-parse-logs.ts",
+    "migrate:chapters-questions": "ts-node -r tsconfig-paths/register scripts/create-chapters-questions-tables.ts",
+    "verify-import": "ts-node -r tsconfig-paths/register scripts/verify-import.ts",
+    "sql": "ts-node -r tsconfig-paths/register scripts/run-sql.ts",
+    "cleanup-db": "ts-node -r tsconfig-paths/register scripts/cleanup-database.ts",
     "seed": "npx knex seed:run"
   },
   "keywords": [

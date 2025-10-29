@@ -727,6 +727,130 @@ DELETE /api/parse-results/5
 
 ---
 
+## 📚 题库管理模块
+
+### 概述
+题库管理模块提供题库的查询和管理功能，支持获取题库列表、题库详情和题库统计信息。
+
+**数据表**: `question_banks`
+- 存储题库基本信息（名称、描述、创建者等）
+- 记录题目总数和解析状态
+- 支持分页查询
+
+### GET /api/questions/banks （获取题库列表）
+
+- **功能**：获取所有已完成解析的题库列表
+- **权限**：需要 Bearer Token
+- **查询参数**：
+  - `page` （可选）：页码，默认1
+  - `limit` （可选）：每页数量，默认20，最大100
+
+#### 请求示例
+```bash
+GET /api/questions/banks?page=1&limit=20
+```
+
+#### 响应示例
+```json
+{
+  "code": 200,
+  "message": "获取题库列表成功",
+  "data": {
+    "banks": [
+      {
+        "id": 15,
+        "name": "系统架构师题库",
+        "description": "2024年系统架构师考试题库",
+        "file_original_name": "系统架构师.pdf",
+        "file_type": "pdf",
+        "file_size": 2048000,
+        "parse_status": "completed",
+        "question_count": 1000,
+        "creator_name": "张三",
+        "created_by": 10,
+        "created_at": "2025-10-29 10:00:00",
+        "updated_at": "2025-10-29 11:00:00"
+      },
+      {
+        "id": 16,
+        "name": "网络工程师题库",
+        "description": null,
+        "file_original_name": "网络工程师真题.pdf",
+        "file_type": "pdf",
+        "file_size": 1536000,
+        "parse_status": "completed",
+        "question_count": 800,
+        "creator_name": "李四",
+        "created_by": 11,
+        "created_at": "2025-10-28 15:30:00",
+        "updated_at": "2025-10-28 16:45:00"
+      }
+    ],
+    "total": 25,
+    "pagination": {
+      "page": 1,
+      "limit": 20,
+      "total": 25,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+### GET /api/questions/banks/:id （获取题库详情）
+
+- **功能**：获取指定题库的详细信息和统计数据
+- **权限**：需要 Bearer Token
+- **路径参数**：
+  - `id` （必填）：题库ID
+
+#### 请求示例
+```bash
+GET /api/questions/banks/15
+```
+
+#### 响应示例
+```json
+{
+  "code": 200,
+  "message": "获取题库详情成功",
+  "data": {
+    "id": 15,
+    "name": "系统架构师题库",
+    "description": "2024年系统架构师考试题库",
+    "file_original_name": "系统架构师.pdf",
+    "file_type": "pdf",
+    "file_size": 2048000,
+    "parse_status": "completed",
+    "creator_name": "张三",
+    "created_by": 10,
+    "created_at": "2025-10-29 10:00:00",
+    "updated_at": "2025-10-29 11:00:00",
+    "stats": {
+      "total_questions": 1000,
+      "single_choice": 600,
+      "multiple_choice": 250,
+      "judge": 100,
+      "fill": 30,
+      "essay": 20,
+      "difficulty_easy": 300,
+      "difficulty_medium": 500,
+      "difficulty_hard": 200
+    }
+  }
+}
+```
+
+#### 错误响应
+```json
+{
+  "code": 404,
+  "message": "题库不存在"
+}
+```
+
+---
+
 ## 📚 章节管理模块
 
 ### 概述
@@ -808,12 +932,18 @@ GET /api/question-banks/2/chapters/stats
 }
 ```
 
-### GET /api/chapters/:chapterId （获取章节详情）
+### GET /api/question-banks/:bankId/chapters/:chapterId （获取章节详情）
 
-- **功能**：获取指定章节的详细信息
+- **功能**：获取指定题库的指定章节详细信息
 - **权限**：需要 Bearer Token
 - **路径参数**：
+  - `bankId` （必填）：题库ID
   - `chapterId` （必填）：章节ID
+
+#### 请求示例
+```bash
+GET /api/question-banks/2/chapters/1
+```
 
 #### 响应示例
 ```json
@@ -832,26 +962,97 @@ GET /api/question-banks/2/chapters/stats
 }
 ```
 
-### GET /api/chapters/:chapterId/questions （获取章节题目）
+#### 错误响应
+```json
+{
+  "code": 404,
+  "message": "章节不存在或不属于该题库"
+}
+```
 
-- **功能**：获取指定章节的题目列表，支持分页
+### GET /api/question-banks/:bankId/chapters/:chapterId/questions （获取章节题目）
+
+- **功能**：获取指定题库的指定章节的题目列表，支持三种模式
 - **权限**：需要 Bearer Token
 - **路径参数**：
+  - `bankId` （必填）：题库ID
   - `chapterId` （必填）：章节ID
 - **查询参数**：
-  - `page` （可选）：页码，默认1
-  - `limit` （可选）：每页数量，默认20，最大100
+  - `questionNumber` （可选）：题号（从1开始），传入时返回单个题目（逐题答题场景）
+  - `page` （可选）：页码，默认1（仅在分页模式下有效）
+  - `limit` （可选）：每页数量，**默认0（返回全部题目）**，设置具体数值时最大100
 
-#### 请求示例
+#### 使用场景
+
+**1️⃣ 单题模式（推荐）**：逐题加载，减轻网络压力
 ```bash
-# 获取第1章的第1页题目（每页20题）
-GET /api/chapters/1/questions?page=1&limit=20
+# 获取第1题
+GET /api/question-banks/2/chapters/1/questions?questionNumber=1
 
-# 获取第1章的第2页题目
-GET /api/chapters/1/questions?page=2&limit=20
+# 获取第2题
+GET /api/question-banks/2/chapters/1/questions?questionNumber=2
+
+# 获取第50题
+GET /api/question-banks/2/chapters/1/questions?questionNumber=50
+
+# 超出范围（如第51题，但只有50题）
+GET /api/question-banks/2/chapters/1/questions?questionNumber=51
+```
+
+**2️⃣ 全量模式**：一次性加载所有题目
+```bash
+GET /api/question-banks/2/chapters/1/questions
+```
+
+**3️⃣ 分页模式**：题库管理场景
+```bash
+GET /api/question-banks/2/chapters/1/questions?page=1&limit=20
+GET /api/question-banks/2/chapters/1/questions?page=2&limit=20
 ```
 
 #### 响应示例
+
+**单题模式响应**（推荐）：
+```json
+{
+  "code": 200,
+  "message": "获取题目成功",
+  "data": {
+    "question": {
+      "id": 101,
+      "bank_id": 2,
+      "chapter_id": 1,
+      "question_no": "1",
+      "type": "single",
+      "content": "关于信息的描述，不正确的是（）。",
+      "options": ["A.选项1", "B.选项2", "C.选项3", "D.选项4"],
+      "answer": "D",
+      "explanation": "解析内容...",
+      "difficulty": 2,
+      "tags": ["第01章-信息化发展"],
+      "bank_name": "系统架构师题库",
+      "chapter_name": "第01章-信息化发展"
+    },
+    "total": 50,
+    "currentNumber": 1,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+```
+
+**超出范围响应**：
+```json
+{
+  "code": 200,
+  "message": "没有更多题目了",
+  "data": {
+    "total": 50
+  }
+}
+```
+
+**全量/分页模式响应**：
 ```json
 {
   "code": 200,
@@ -877,20 +1078,26 @@ GET /api/chapters/1/questions?page=2&limit=20
     "total": 50,
     "pagination": {
       "page": 1,
-      "limit": 20,
+      "limit": 0,
       "total": 50,
-      "totalPages": 3
+      "totalPages": 1
     }
   }
 }
 ```
 
-### DELETE /api/chapters/:chapterId （删除章节）
+### DELETE /api/question-banks/:bankId/chapters/:chapterId （删除章节）
 
-- **功能**：删除指定章节（级联删除该章节下的所有题目）
+- **功能**：删除指定题库的指定章节（级联删除该章节下的所有题目）
 - **权限**：需要 Bearer Token
 - **路径参数**：
+  - `bankId` （必填）：题库ID
   - `chapterId` （必填）：章节ID
+
+#### 请求示例
+```bash
+DELETE /api/question-banks/2/chapters/1
+```
 
 #### 响应示例
 ```json
@@ -898,6 +1105,14 @@ GET /api/chapters/1/questions?page=2&limit=20
   "code": 200,
   "message": "删除章节成功",
   "data": null
+}
+```
+
+#### 错误响应
+```json
+{
+  "code": 404,
+  "message": "章节不存在或不属于该题库"
 }
 ```
 

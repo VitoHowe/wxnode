@@ -32,6 +32,15 @@ coverage/
 uploads/
 temp/
 
+# Question bank images (too large for git)
+public/question-banks/*/images/*.jpg
+public/question-banks/*/images/*.jpeg
+public/question-banks/*/images/*.png
+public/question-banks/*/images/*.gif
+public/question-banks/*/images/*.webp
+# Keep README files
+!public/question-banks/README.md
+
 # IDE
 .vscode/
 .idea/

@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 
 import { errorHandler } from '@/middleware/errorHandler';
 import { notFoundHandler } from '@/middleware/notFoundHandler';
@@ -29,11 +30,20 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 中间件配置
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false  // 允许跨域资源访问
+}));
 app.use(cors());
 app.use(morgan('combined', { stream: { write: (message) => logger.info(message.trim()) } }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 静态文件服务：题库图片资源
+app.use('/api/question-banks/:bankId/images', (req, res, next) => {
+  const bankId = req.params.bankId;
+  const publicPath = path.join(process.cwd(), 'public', 'question-banks', bankId, 'images');
+  express.static(publicPath)(req, res, next);
+});
 
 // Swagger API文档配置
 const swaggerOptions = {

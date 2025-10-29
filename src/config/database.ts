@@ -29,6 +29,9 @@ export const createPool = () => {
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
+    connectTimeout: 60000, // 60秒连接超时
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 0,
   });
 
   return pool;
@@ -143,25 +146,9 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
 
     // 迁移题库表 - 添加AI相关字段
     await migrateQuestionBanksTable(connection);
-
-    // 创建解析结果表（新架构：替代原questions表）
-    await connection.execute(`
-      CREATE TABLE IF NOT EXISTS parse_results (
-        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
-        bank_id INT NOT NULL COMMENT '关联的题库ID',
-        questions JSON NOT NULL COMMENT '解析得到的题目数组(JSON格式)',
-        total_questions INT NOT NULL DEFAULT 0 COMMENT '题目总数',
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-        INDEX idx_bank_id (bank_id),
-        INDEX idx_created_at (created_at),
-        CONSTRAINT fk_parse_results_bank_id FOREIGN KEY (bank_id) 
-          REFERENCES question_banks(id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='解析结果表'
-    `);
     
-    // 迁移旧的questions表数据（如果存在）
-    await migrateQuestionsToParseResults(connection);
+    // 添加解析JSON文件路径字段
+    await addParsedJsonPathField(connection);
 
     // 创建用户学习进度表
     await connection.execute(`
@@ -169,7 +156,6 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
         user_id INT NOT NULL COMMENT '用户ID',
         bank_id INT NOT NULL COMMENT '题库ID',
-        parse_result_id INT NULL COMMENT '关联的解析结果ID',
         current_question_index INT NOT NULL DEFAULT 0 COMMENT '当前题目索引(从0开始)',
         completed_count INT NOT NULL DEFAULT 0 COMMENT '已完成题目数量',
         total_questions INT NOT NULL DEFAULT 0 COMMENT '总题目数量',
@@ -183,9 +169,7 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         CONSTRAINT fk_progress_user FOREIGN KEY (user_id) 
           REFERENCES users(id) ON DELETE CASCADE,
         CONSTRAINT fk_progress_bank FOREIGN KEY (bank_id) 
-          REFERENCES question_banks(id) ON DELETE CASCADE,
-        CONSTRAINT fk_progress_parse_result FOREIGN KEY (parse_result_id) 
-          REFERENCES parse_results(id) ON DELETE SET NULL
+          REFERENCES question_banks(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户学习进度表'
     `);
 
@@ -382,76 +366,30 @@ const migrateProviderTable = async (connection: mysql.PoolConnection): Promise<v
 };
 
 /**
- * 迁移questions表到parse_results表
+ * 添加解析JSON文件路径字段
  */
-const migrateQuestionsToParseResults = async (connection: mysql.PoolConnection): Promise<void> => {
+const addParsedJsonPathField = async (connection: mysql.PoolConnection): Promise<void> => {
   try {
-    // 检查旧的questions表是否存在
-    const oldTableCheck = await connection.execute(`
-      SELECT TABLE_NAME 
-      FROM INFORMATION_SCHEMA.TABLES 
+    const fieldCheck = await connection.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
       WHERE TABLE_SCHEMA = '${dbConfig.database}' 
-      AND TABLE_NAME = 'questions'
+        AND TABLE_NAME = 'question_banks' 
+        AND COLUMN_NAME = 'parsed_json_path'
     `);
 
-    if ((oldTableCheck[0] as any[]).length > 0) {
-      logger.info('检测到旧的questions表，开始迁移数据到parse_results表...');
-      
-      // 检查questions表是否有数据
-      const dataCheck = await connection.execute(`SELECT COUNT(*) as count FROM questions`);
-      const recordCount = (dataCheck[0] as any[])[0].count;
-      
-      if (recordCount > 0) {
-        logger.info(`发现 ${recordCount} 条题目记录，开始迁移...`);
-        
-        // 按bank_id分组聚合数据
-        const groupedData = await connection.execute(`
-          SELECT 
-            bank_id,
-            JSON_ARRAYAGG(
-              JSON_OBJECT(
-                'type', type,
-                'content', content,
-                'options', options,
-                'answer', answer,
-                'explanation', explanation,
-                'difficulty', difficulty,
-                'tags', tags,
-                'page_number', page_number,
-                'confidence_score', confidence_score
-              )
-            ) as questions,
-            COUNT(*) as total_questions,
-            MIN(created_at) as created_at
-          FROM questions
-          GROUP BY bank_id
-        `);
-        
-        const records = groupedData[0] as any[];
-        
-        // 插入到parse_results表
-        for (const record of records) {
-          await connection.execute(`
-            INSERT INTO parse_results (bank_id, questions, total_questions, created_at, updated_at)
-            VALUES (?, ?, ?, ?, NOW())
-          `, [record.bank_id, record.questions, record.total_questions, record.created_at]);
-        }
-        
-        logger.info(`成功迁移 ${records.length} 个题库的数据到parse_results表`);
-      } else {
-        logger.info('questions表为空，跳过数据迁移');
-      }
-      
-      // 重命名旧表作为备份
-      const backupName = `questions_backup_${Date.now()}`;
-      await connection.execute(`RENAME TABLE questions TO ${backupName}`);
-      
-      logger.info(`旧questions表已重命名为: ${backupName}`);
+    if ((fieldCheck[0] as any[]).length === 0) {
+      await connection.execute(`
+        ALTER TABLE question_banks 
+        ADD COLUMN parsed_json_path VARCHAR(500) NULL COMMENT '解析后的JSON文件路径' 
+        AFTER file_path
+      `);
+      logger.info('已添加 parsed_json_path 字段');
     } else {
-      logger.info('未发现旧的questions表，跳过迁移');
+      logger.info('parsed_json_path 字段已存在，跳过');
     }
   } catch (error) {
-    logger.error('questions表迁移失败:', error);
+    logger.error('添加parsed_json_path字段失败:', error);
     // 不抛出错误，让应用继续运行
   }
 };
@@ -526,7 +464,7 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
 export const query = async (sql: string, params?: any[]): Promise<any> => {
   const connection = await getPool().getConnection();
   try {
-    const [results] = await connection.execute(sql, params);
+    const [results] = await connection.execute(sql, params || []);
     return results;
   } finally {
     connection.release();
