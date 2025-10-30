@@ -46,6 +46,13 @@ router.post('/:bankId', userProgressController.saveProgress);
 router.delete('/:bankId', userProgressController.resetProgress);
 
 /**
+ * @route GET /api/user-progress/:bankId/full
+ * @desc 获取整卷练习进度
+ * @param bankId - 题库ID
+ */
+router.get('/:bankId/full', userProgressController.getFullBankProgress);
+
+/**
  * @route GET /api/user-progress/:bankId/chapters
  * @desc 获取题库所有章节的学习进度
  * @param bankId - 题库ID

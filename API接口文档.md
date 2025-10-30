@@ -739,7 +739,7 @@ DELETE /api/parse-results/5
 
 ### GET /api/questions/banks （获取题库列表）
 
-- **功能**：获取所有已完成解析的题库列表
+- **功能**：获取所有已完成解析的题库列表，自动包含当前登录用户的学习进度汇总
 - **权限**：需要 Bearer Token
 - **查询参数**：
   - `page` （可选）：页码，默认1
@@ -769,7 +769,15 @@ GET /api/questions/banks?page=1&limit=20
         "creator_name": "张三",
         "created_by": 10,
         "created_at": "2025-10-29 10:00:00",
-        "updated_at": "2025-10-29 11:00:00"
+        "updated_at": "2025-10-29 11:00:00",
+        "study_progress": {
+          "total_chapters": 10,
+          "studied_chapters": 3,
+          "completed_questions": 150,
+          "total_questions": 1000,
+          "progress_percentage": 15,
+          "last_study_time": "2025-10-29 23:00:00"
+        }
       },
       {
         "id": 16,
@@ -783,7 +791,15 @@ GET /api/questions/banks?page=1&limit=20
         "creator_name": "李四",
         "created_by": 11,
         "created_at": "2025-10-28 15:30:00",
-        "updated_at": "2025-10-28 16:45:00"
+        "updated_at": "2025-10-28 16:45:00",
+        "study_progress": {
+          "total_chapters": 8,
+          "studied_chapters": 0,
+          "completed_questions": 0,
+          "total_questions": 800,
+          "progress_percentage": 0,
+          "last_study_time": null
+        }
       }
     ],
     "total": 25,
@@ -796,6 +812,15 @@ GET /api/questions/banks?page=1&limit=20
   }
 }
 ```
+
+#### 字段说明
+- **study_progress**：学习进度汇总信息（仅登录用户）
+  - `total_chapters`：题库总章节数
+  - `studied_chapters`：已开始学习的章节数
+  - `completed_questions`：已完成的题目总数（所有章节累加）
+  - `total_questions`：题库题目总数
+  - `progress_percentage`：整体学习进度百分比
+  - `last_study_time`：最近一次学习时间（任意章节）
 
 ### GET /api/questions/banks/:id （获取题库详情）
 

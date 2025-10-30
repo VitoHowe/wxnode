@@ -183,6 +183,7 @@ export async function saveChapterProgress(req: Request, res: Response, next: Nex
     }
     
     const { 
+      practice_mode = 'chapter',
       current_question_number,
       completed_count,
       total_questions 
@@ -197,6 +198,7 @@ export async function saveChapterProgress(req: Request, res: Response, next: Nex
     }
     
     const progress = await userProgressService.saveProgress(userId, Number(bankId), {
+      practice_mode,
       chapter_id: Number(chapterId),
       current_question_number,
       completed_count,
@@ -227,6 +229,33 @@ export async function getBankChaptersProgress(req: Request, res: Response, next:
     );
     
     return ResponseUtil.success(res, progressList, '获取题库章节进度成功');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/**
+ * 获取整卷练习进度
+ */
+export async function getFullBankProgress(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { bankId } = req.params;
+    const userId = req.user?.userId;
+    
+    if (!userId) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+    
+    const progress = await userProgressService.getFullBankProgress(
+      userId, 
+      Number(bankId)
+    );
+    
+    if (!progress) {
+      return ResponseUtil.success(res, null, '暂无整卷练习进度');
+    }
+    
+    return ResponseUtil.success(res, progress, '获取整卷练习进度成功');
   } catch (error) {
     return next(error);
   }

@@ -45,6 +45,7 @@ interface GetQuestionsParams {
 interface GetQuestionBanksParams {
   page: number;
   limit: number;
+  userId?: number; // 可选，用于查询学习进度
 }
 
 // 更新题目参数
@@ -148,7 +149,7 @@ class QuestionService {
    * 获取题库列表
    */
   async getQuestionBanks(params: GetQuestionBanksParams): Promise<{ banks: QuestionBank[]; total: number; pagination: any }> {
-    const { page, limit } = params;
+    const { page, limit, userId } = params;
     const offset = (page - 1) * limit;
 
     try {
@@ -157,7 +158,8 @@ class QuestionService {
       const countResult = await query(countSql, ['completed']);
       const total = countResult[0].total;
 
-      // 获取题库列表（使用 LEFT JOIN 替代子查询）
+      // 获取题库列表（为避免某些 MySQL 版本对 LIMIT/OFFSET 绑定参数报错，这里直接插入已验证的数值）
+      // 使用子查询避免 JOIN 导致的笛卡尔积问题
       const sql = `
         SELECT 
           qb.id,
@@ -172,22 +174,74 @@ class QuestionService {
           qb.created_at,
           qb.updated_at,
           u.nickname as creator_name,
-          COUNT(q.id) as question_count
+          (SELECT COUNT(*) FROM questions WHERE bank_id = qb.id) as question_count,
+          ${
+            userId
+              ? `(SELECT COUNT(*) FROM question_chapters WHERE bank_id = qb.id) as total_chapters,
+          (SELECT COUNT(DISTINCT chapter_id) 
+           FROM user_study_progress 
+           WHERE bank_id = qb.id AND user_id = ${userId} AND chapter_id IS NOT NULL) as studied_chapters,
+          (SELECT COALESCE(SUM(COALESCE(current_question_number, completed_count)), 0) 
+           FROM user_study_progress 
+           WHERE bank_id = qb.id AND user_id = ${userId} AND chapter_id IS NOT NULL) as completed_questions,
+          (SELECT MAX(last_study_time) 
+           FROM user_study_progress 
+           WHERE bank_id = qb.id AND user_id = ${userId}) as last_study_time`
+              : `NULL as total_chapters,
+          NULL as studied_chapters,
+          NULL as completed_questions,
+          NULL as last_study_time`
+          }
         FROM question_banks qb 
         LEFT JOIN users u ON qb.created_by = u.id
-        LEFT JOIN questions q ON q.bank_id = qb.id
         WHERE qb.parse_status = ?
-        GROUP BY qb.id, qb.name, qb.description, qb.file_type, qb.file_original_name, 
-                 qb.file_path, qb.file_size, qb.parse_status, qb.created_by, 
-                 qb.created_at, qb.updated_at, u.nickname
         ORDER BY qb.created_at DESC 
-        LIMIT ? OFFSET ?
+        LIMIT ${limit} OFFSET ${offset}
       `;
       
-      const banks = await query(sql, ['completed', limit, offset]);
+      const banks = await query(sql, ['completed']);
+
+      // 格式化返回数据，添加进度信息
+      const formattedBanks = banks.map((bank: any) => {
+        const result: any = {
+          id: bank.id,
+          name: bank.name,
+          description: bank.description,
+          file_type: bank.file_type,
+          file_original_name: bank.file_original_name,
+          file_path: bank.file_path,
+          file_size: bank.file_size,
+          parse_status: bank.parse_status,
+          created_by: bank.created_by,
+          created_at: bank.created_at,
+          updated_at: bank.updated_at,
+          creator_name: bank.creator_name,
+          question_count: bank.question_count,
+        };
+
+        // 如果查询了进度数据，则添加 study_progress 字段
+        if (userId && bank.total_chapters !== null) {
+          const totalQuestions = bank.question_count || 0;
+          const completedQuestions = bank.completed_questions || 0;
+          const progressPercentage = totalQuestions > 0 
+            ? Math.round((completedQuestions / totalQuestions) * 100)
+            : 0;
+
+          result.study_progress = {
+            total_chapters: bank.total_chapters || 0,
+            studied_chapters: bank.studied_chapters || 0,
+            completed_questions: completedQuestions,
+            total_questions: totalQuestions,
+            progress_percentage: progressPercentage,
+            last_study_time: bank.last_study_time,
+          };
+        }
+
+        return result;
+      });
 
       return {
-        banks,
+        banks: formattedBanks,
         total,
         pagination: {
           page,
@@ -232,8 +286,7 @@ class QuestionService {
           COUNT(CASE WHEN type = 'essay' THEN 1 END) as essay,
           COUNT(CASE WHEN difficulty = 1 THEN 1 END) as easy,
           COUNT(CASE WHEN difficulty = 2 THEN 1 END) as medium,
-          COUNT(CASE WHEN difficulty = 3 THEN 1 END) as hard,
-          AVG(confidence_score) as avg_confidence
+          COUNT(CASE WHEN difficulty = 3 THEN 1 END) as hard
         FROM questions 
         WHERE bank_id = ?
       `;
@@ -325,13 +378,15 @@ class QuestionService {
   async createQuestions(bankId: number, questions: any[]): Promise<void> {
     try {
       const sql = `
-        INSERT INTO questions (bank_id, type, content, options, answer, explanation, difficulty, tags, page_number, confidence_score, created_at)
+        INSERT INTO questions (bank_id, chapter_id, question_no, type, content, options, answer, explanation, difficulty, tags, created_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
       for (const question of questions) {
         await query(sql, [
           bankId,
+          question.chapter_id || null,
+          question.question_no || null,
           question.type,
           question.content,
           JSON.stringify(question.options || null),
@@ -339,8 +394,6 @@ class QuestionService {
           question.explanation || null,
           question.difficulty || 1,
           JSON.stringify(question.tags || null),
-          question.page_number || null,
-          question.confidence_score || null,
         ]);
       }
 

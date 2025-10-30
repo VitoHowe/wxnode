@@ -42,13 +42,15 @@ class QuestionController {
    */
   getQuestionBanks = asyncHandler(async (req: Request, res: Response) => {
     const { page = 1, limit = 20 } = req.query;
+    const userId = req.user?.userId; // 从认证信息中获取用户ID
 
     const result = await questionService.getQuestionBanks({
       page: Number(page),
       limit: Number(limit),
+      userId, // 传递用户ID以获取学习进度
     });
 
-    return ResponseUtil.success(res, result, '获取成功');
+    return ResponseUtil.success(res, result, '获取题库列表成功');
   });
 
   /**
