@@ -33,10 +33,15 @@ COPY tsconfig.json ./
 COPY src ./src
 
 # 构建 TypeScript
-RUN npm run build
+RUN npm run build && \
+    echo "✅ TypeScript 编译完成"
 
-# 解析路径别名（将 @/ 替换为相对路径）
-RUN npx tsc-alias -p tsconfig.json
+# 解析路径别名（使用 tsc-alias）
+RUN echo "开始解析路径别名..." && \
+    npx tsc-alias && \
+    echo "✅ 路径别名已解析" && \
+    echo "验证结果..." && \
+    (grep "@/" dist/app.js || echo "✅ app.js 中已无 @/ 路径")
 
 # 清理开发依赖，只保留生产依赖
 # 注意：tsc-alias 已经解析了路径别名，不再需要 tsconfig-paths
