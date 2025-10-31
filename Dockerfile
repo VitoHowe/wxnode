@@ -6,8 +6,19 @@ FROM node:20-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
-# 安装构建依赖
-RUN apk add --no-cache python3 make g++
+# 安装构建依赖（包括 canvas 所需的 Cairo 库）
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    cairo-dev \
+    jpeg-dev \
+    pango-dev \
+    giflib-dev \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    freetype-dev
 
 # 复制依赖文件
 COPY package*.json ./
@@ -37,15 +48,14 @@ FROM node:20-alpine
 # 设置工作目录
 WORKDIR /app
 
-# 安装运行时依赖（用于某些 native 模块）
+# 安装运行时依赖（用于 canvas 等 native 模块）
 RUN apk add --no-cache \
-    python3 \
-    make \
-    g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
+    cairo \
+    pango \
+    jpeg \
+    giflib \
+    pixman \
+    freetype \
     netcat-openbsd
 
 # 创建非 root 用户
