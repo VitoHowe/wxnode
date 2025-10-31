@@ -14,6 +14,7 @@ services:
       # 服务器配置
       PORT: ${PORT:-3006}
       NODE_ENV: ${NODE_ENV:-production}
+      NODE_OPTIONS: --require tsconfig-paths/register
       
       # 数据库配置（连接宿主机的 MySQL）
       DB_HOST: ${DB_HOST:-host.docker.internal}
