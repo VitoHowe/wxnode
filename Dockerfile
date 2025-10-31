@@ -49,7 +49,7 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY package*.json ./
 
 # 仅安装生产依赖
-RUN npm ci --only=production && \
+RUN npm ci --omit=dev && \
     npm install tsconfig-paths && \
     npm cache clean --force
 
