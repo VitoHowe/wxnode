@@ -16,8 +16,6 @@ RUN apk add --no-cache \
     pango-dev \
     giflib-dev \
     pixman-dev \
-    pangomm-dev \
-    libjpeg-turbo-dev \
     freetype-dev
 
 # 复制依赖文件
