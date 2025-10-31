@@ -5,8 +5,10 @@
   "main": "dist/app.js",
   "scripts": {
     "dev": "nodemon",
-    "build": "tsc",
-    "start": "node -r tsconfig-paths/register dist/app.js",
+    "build": "tsc && tsc-alias",
+    "build:docker": "tsc && tsc-alias",
+    "start": "node dist/app.js",
+    "start:dev": "node -r tsconfig-paths/register dist/app.js",
     "test": "jest",
     "migrate": "npx knex migrate:latest",
     "migrate:parse-logs": "ts-node -r tsconfig-paths/register scripts/migrate-parse-logs.ts",
@@ -59,6 +61,7 @@
     "nodemon": "^3.0.1",
     "ts-jest": "^29.1.1",
     "ts-node": "^10.9.1",
+    "tsc-alias": "^1.8.8",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.1.6"
   }

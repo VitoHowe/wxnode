@@ -25,23 +25,14 @@ COPY package*.json ./
 # 注意：项目使用 pnpm，但 Docker 中使用 npm 以简化配置
 RUN npm install
 
-# 安装 tsc-alias 用于解析路径别名
-RUN npm install --save-dev tsc-alias
-
 # 复制源代码和配置文件
 COPY tsconfig.json ./
 COPY src ./src
 
-# 构建 TypeScript
+# 构建 TypeScript（自动运行 tsc-alias）
 RUN npm run build && \
-    echo "✅ TypeScript 编译完成"
-
-# 解析路径别名（使用 tsc-alias）
-RUN echo "开始解析路径别名..." && \
-    npx tsc-alias && \
-    echo "✅ 路径别名已解析" && \
-    echo "验证结果..." && \
-    (grep "@/" dist/app.js || echo "✅ app.js 中已无 @/ 路径")
+    echo "✅ 编译完成，验证路径别名解析..." && \
+    (grep -r "require('@/" dist/ && echo "❌ 发现未解析的路径别名" && exit 1 || echo "✅ 路径别名已全部解析")
 
 # 清理开发依赖，只保留生产依赖
 # 注意：tsc-alias 已经解析了路径别名，不再需要 tsconfig-paths
