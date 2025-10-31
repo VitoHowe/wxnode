@@ -55,4 +55,4 @@ Thumbs.db
 .nyc_output/
 
 # Docker
-.dockerignore
+# .dockerignore - 注释掉以支持 Docker 构建

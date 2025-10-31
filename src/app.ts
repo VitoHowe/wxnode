@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -24,9 +24,17 @@ import userProgressRoutes from '@/routes/userProgress';
 import chapterRoutes from '@/routes/chapters';
 
 // 加载环境变量
-dotenv.config({ path: '.process' });
+// 优先加载 .env 文件（Docker 环境），如果不存在则尝试加载 .process 文件（本地开发环境）
+const fs = require('fs');
+if (fs.existsSync('.env')) {
+  dotenv.config({ path: '.env' });
+} else if (fs.existsSync('.process')) {
+  dotenv.config({ path: '.process' });
+} else {
+  dotenv.config(); // 默认加载 .env
+}
 
-const app = express();
+const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
 // 中间件配置

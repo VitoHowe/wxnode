@@ -250,7 +250,7 @@ const migrateQuestionBanksTable = async (connection: mysql.PoolConnection): Prom
     const fileTypeCheck = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'question_banks' 
       AND COLUMN_NAME = 'file_type'
     `);
@@ -276,7 +276,7 @@ const migrateQuestionBanksTable = async (connection: mysql.PoolConnection): Prom
     const providerIdCheck = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'question_banks' 
       AND COLUMN_NAME = 'provider_id'
     `);
@@ -303,7 +303,7 @@ const migrateQuestionBanksTable = async (connection: mysql.PoolConnection): Prom
     const modelNameCheck = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'question_banks' 
       AND COLUMN_NAME = 'model_name'
     `);
@@ -335,7 +335,7 @@ const migrateProviderTable = async (connection: mysql.PoolConnection): Promise<v
     const oldTableCheck = await connection.execute(`
       SELECT TABLE_NAME 
       FROM INFORMATION_SCHEMA.TABLES 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'model_configs'
     `);
 
@@ -403,7 +403,7 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
     const usernameColumnCheck = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'users' 
       AND COLUMN_NAME = 'username'
     `);
@@ -429,7 +429,7 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
     const passwordColumnCheck = await connection.execute(`
       SELECT COLUMN_NAME 
       FROM INFORMATION_SCHEMA.COLUMNS 
-      WHERE TABLE_SCHEMA = 'wxnode_db' 
+      WHERE TABLE_SCHEMA = '${dbConfig.database}' 
       AND TABLE_NAME = 'users' 
       AND COLUMN_NAME = 'password'
     `);
