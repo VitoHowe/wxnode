@@ -22,6 +22,12 @@ COPY src ./src
 # 构建 TypeScript
 RUN npm run build
 
+# 清理开发依赖，只保留生产依赖
+RUN npm prune --production
+
+# 重新安装运行时必需的包（在 devDependencies 但运行时需要）
+RUN npm install --no-save tsconfig-paths
+
 # ===================================
 # Stage 2: Production - 生产环境
 # ===================================
@@ -48,10 +54,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # 复制依赖文件
 COPY package*.json ./
 
-# 仅安装生产依赖
-RUN npm ci --omit=dev && \
-    npm install tsconfig-paths && \
-    npm cache clean --force
+# 从 builder 阶段复制已安装的 node_modules
+COPY --from=builder /app/node_modules ./node_modules
 
 # 从 builder 阶段复制构建产物
 COPY --from=builder /app/dist ./dist
