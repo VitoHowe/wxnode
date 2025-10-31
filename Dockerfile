@@ -13,7 +13,8 @@ RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 
 # 安装所有依赖（包括 devDependencies）
-RUN npm ci
+# 注意：项目使用 pnpm，但 Docker 中使用 npm 以简化配置
+RUN npm install
 
 # 复制源代码和配置文件
 COPY tsconfig.json ./
