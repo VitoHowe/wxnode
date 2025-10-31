@@ -61,7 +61,7 @@ services:
       retries: 3
       start_period: 60s
     entrypoint: ["/bin/sh", "/app/docker-entrypoint.sh"]
-    command: ["node", "-r", "tsconfig-paths/register", "dist/app.js"]
+    command: ["node", "dist/app.js"]
 
 networks:
   wxnode-network:

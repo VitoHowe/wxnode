@@ -25,6 +25,9 @@ COPY package*.json ./
 # 注意：项目使用 pnpm，但 Docker 中使用 npm 以简化配置
 RUN npm install
 
+# 安装 tsc-alias 用于解析路径别名
+RUN npm install --save-dev tsc-alias
+
 # 复制源代码和配置文件
 COPY tsconfig.json ./
 COPY src ./src
@@ -32,11 +35,12 @@ COPY src ./src
 # 构建 TypeScript
 RUN npm run build
 
-# 清理开发依赖，只保留生产依赖
-RUN npm prune --production
+# 解析路径别名（将 @/ 替换为相对路径）
+RUN npx tsc-alias -p tsconfig.json
 
-# 重新安装运行时必需的包（在 devDependencies 但运行时需要）
-RUN npm install --no-save tsconfig-paths
+# 清理开发依赖，只保留生产依赖
+# 注意：tsc-alias 已经解析了路径别名，不再需要 tsconfig-paths
+RUN npm prune --production
 
 # ===================================
 # Stage 2: Production - 生产环境
@@ -91,5 +95,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# 启动命令
-CMD ["node", "-r", "tsconfig-paths/register", "dist/app.js"]
+# 启动命令（路径别名已在编译时解析，无需 tsconfig-paths）
+CMD ["node", "dist/app.js"]
