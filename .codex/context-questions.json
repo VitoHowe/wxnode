@@ -1,0 +1,32 @@
+﻿[
+  {
+    "question": "单词书上传数据应如何落库？需要单独的 word_books + word_entries 表还是直接存文件？",
+    "status": "open",
+    "priority": "high",
+    "notes": "影响 API 设计和查询效率，倾向建表供快速检索。"
+  },
+  {
+    "question": "上传接口输入格式：是 multipart JSON 文件还是直接 JSON body？是否需要沿用 multer？",
+    "status": "open",
+    "priority": "high",
+    "notes": "影响路由和 swagger 设计，需要与现有上传逻辑保持一致。"
+  },
+  {
+    "question": "单词条目的字段规范？样例只有 english/chinese，但未来可能需要音标/例句，是否需要 JSON 扩展字段？",
+    "status": "open",
+    "priority": "medium",
+    "notes": "决定数据库 schema 的可扩展性。"
+  },
+  {
+    "question": "接口是否需要鉴权？是否沿用 authenticateToken？",
+    "status": "open",
+    "priority": "medium",
+    "notes": "涉及权限控制与 middleware 复用。"
+  },
+  {
+    "question": "是否需要分页/搜索指定单词书中的单词？用户需求目前只说获取整本，需确认返回策略。",
+    "status": "open",
+    "priority": "low",
+    "notes": "关系到 API 的响应体大小与性能。"
+  }
+]

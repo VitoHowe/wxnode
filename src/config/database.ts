@@ -226,6 +226,49 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // 单词书元数据表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS word_books (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        language VARCHAR(50) DEFAULT 'zh-CN',
+        total_words INT DEFAULT 0,
+        source_filename VARCHAR(255),
+        stored_path VARCHAR(500),
+        source_size BIGINT,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_word_books_name_lang (name, language),
+        INDEX idx_word_books_language (language),
+        INDEX idx_word_books_created_by (created_by),
+        FOREIGN KEY (created_by) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 单词条目表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS word_book_entries (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        book_id INT NOT NULL,
+        word VARCHAR(255) NOT NULL,
+        translation VARCHAR(1000) NOT NULL,
+        phonetic VARCHAR(255),
+        definition TEXT,
+        example_sentence TEXT,
+        part_of_speech VARCHAR(50),
+        tags VARCHAR(255),
+        extra JSON,
+        order_index INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_word_book_word (book_id, word),
+        INDEX idx_word_entries_book (book_id),
+        INDEX idx_word_entries_order (book_id, order_index),
+        FOREIGN KEY (book_id) REFERENCES word_books(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 插入默认角色数据
     await connection.execute(`
       INSERT IGNORE INTO roles (id, name, permissions, description) VALUES

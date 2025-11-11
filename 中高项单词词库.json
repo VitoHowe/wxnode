@@ -1,0 +1,1926 @@
+[
+    {
+        "english": "Information",
+        "chinese": "信息"
+    },
+    {
+        "english": "Industrial Internet",
+        "chinese": "工业互联网"
+    },
+    {
+        "english": "Industry 4.0",
+        "chinese": "工业4.0"
+    },
+    {
+        "english": "TSN (Time-Sensitive Networking)",
+        "chinese": "时间敏感网络"
+    },
+    {
+        "english": "Internet of Vehicles (IoV)",
+        "chinese": "车联网"
+    },
+    {
+        "english": "Intelligent Manufacturing (IM)",
+        "chinese": "智能制造"
+    },
+    {
+        "english": "Digital Transformation",
+        "chinese": "数字化转型"
+    },
+    {
+        "english": "Metaverse",
+        "chinese": "元宇宙"
+    },
+    {
+        "english": "Artificial Intelligence",
+        "chinese": "人工智能"
+    },
+    {
+        "english": "Block Chain",
+        "chinese": "区块链"
+    },
+    {
+        "english": "Distributed",
+        "chinese": "分布式的"
+    },
+    {
+        "english": "Digital Ledger",
+        "chinese": "数字分类帐本"
+    },
+    {
+        "english": "Collusion of the Network",
+        "chinese": "网络共识"
+    },
+    {
+        "english": "Virtual Reality (VR)",
+        "chinese": "虚拟现实"
+    },
+    {
+        "english": "Internet Plus (Internet+)",
+        "chinese": "互联网+"
+    },
+    {
+        "english": "5th-Generation (5G)",
+        "chinese": "5G"
+    },
+    {
+        "english": "6th-Generation (6G)",
+        "chinese": "6G"
+    },
+    {
+        "english": "Software Defined Network (SDN)",
+        "chinese": "软件定义网络"
+    },
+    {
+        "english": "Storage Virtualization",
+        "chinese": "存储虚拟化"
+    },
+    {
+        "english": "Green Storage",
+        "chinese": "绿色存储"
+    },
+    {
+        "english": "User and Entity Behavior Analytics (UEBA)",
+        "chinese": "用户和实体行为分析"
+    },
+    {
+        "english": "Network Security Situation Awareness",
+        "chinese": "网络安全态势感知"
+    },
+    {
+        "english": "Micro-Electro-Mechanical Systems (MEMS)",
+        "chinese": "微机电系统"
+    },
+    {
+        "english": "Natural Language Processing (NLP)",
+        "chinese": "自然语言处理"
+    },
+    {
+        "english": "Augmented Reality (AR)",
+        "chinese": "增强现实"
+    },
+    {
+        "english": "Data Flow Diagram (DFD)",
+        "chinese": "数据流图"
+    },
+    {
+        "english": "On-Line Analytical Processing (OLAP)",
+        "chinese": "在线联机分析处理"
+    },
+    {
+        "english": "Data Mining",
+        "chinese": "数据挖掘"
+    },
+    {
+        "english": "Data Warehouse",
+        "chinese": "数据仓库"
+    },
+    {
+        "english": "Database",
+        "chinese": "数据库"
+    },
+    {
+        "english": "Client/Server (C/S)",
+        "chinese": "客户机/服务器"
+    },
+    {
+        "english": "Browser/Server (B/S)",
+        "chinese": "浏览器/服务器"
+    },
+    {
+        "english": "Service Oriented Architecture (SOA)",
+        "chinese": "面向服务的体系结构"
+    },
+    {
+        "english": "Middleware",
+        "chinese": "中间件"
+    },
+    {
+        "english": "Local Area Network (LAN)",
+        "chinese": "局域网"
+    },
+    {
+        "english": "Ethernet",
+        "chinese": "以太网"
+    },
+    {
+        "english": "Wide Area Network (WAN)",
+        "chinese": "广域网"
+    },
+    {
+        "english": "Router",
+        "chinese": "路由器"
+    },
+    {
+        "english": "Switch",
+        "chinese": "交换机"
+    },
+    {
+        "english": "Physical Layer",
+        "chinese": "物理层"
+    },
+    {
+        "english": "Datalink Layer",
+        "chinese": "数据链路层"
+    },
+    {
+        "english": "Network Layer",
+        "chinese": "网络层"
+    },
+    {
+        "english": "Transport Layer",
+        "chinese": "传输层"
+    },
+    {
+        "english": "Session Layer",
+        "chinese": "会话层"
+    },
+    {
+        "english": "Presentation Layer",
+        "chinese": "表示层"
+    },
+    {
+        "english": "Application Layer",
+        "chinese": "应用层"
+    },
+    {
+        "english": "Firewall",
+        "chinese": "防火墙"
+    },
+    {
+        "english": "Transmission Control Protocol (TCP)",
+        "chinese": "传输控制协议"
+    },
+    {
+        "english": "User Datagram Protocol (UDP)",
+        "chinese": "用户数据报协议"
+    },
+    {
+        "english": "Confidentiality",
+        "chinese": "机密性"
+    },
+    {
+        "english": "Integrity",
+        "chinese": "完整性"
+    },
+    {
+        "english": "Availability",
+        "chinese": "可用性"
+    },
+    {
+        "english": "Grid Computing",
+        "chinese": "网格计算"
+    },
+    {
+        "english": "Distributed Computing",
+        "chinese": "分布式计算"
+    },
+    {
+        "english": "Information Security",
+        "chinese": "信息安全"
+    },
+    {
+        "english": "Data Encryption Standard (DES)",
+        "chinese": "数据加密标准"
+    },
+    {
+        "english": "International Data Encryption Algorithm (IDEA)",
+        "chinese": "国际加密数据算法"
+    },
+    {
+        "english": "RSA (Rivest-Shamir-Adleman Algorithm)",
+        "chinese": "由Ron Rivest、Adi Shamirh和LenAdleman三人创建的著名非对称加密算法"
+    },
+    {
+        "english": "MapReduce",
+        "chinese": "用于大规模数据集并行运算的编程模型"
+    },
+    {
+        "english": "HBase",
+        "chinese": "分布式、面向列的开源数据库"
+    },
+    {
+        "english": "Machine Learning",
+        "chinese": "机器学习"
+    },
+    {
+        "english": "Embedded System",
+        "chinese": "嵌入式系统"
+    },
+    {
+        "english": "Digital",
+        "chinese": "数字"
+    },
+    {
+        "english": "New Infrastructure Construction",
+        "chinese": "新型基础设施建设"
+    },
+    {
+        "english": "Beidou Satellite Navigation System",
+        "chinese": "北斗卫星导航系统"
+    },
+    {
+        "english": "Health Code",
+        "chinese": "健康码"
+    },
+    {
+        "english": "Digital Currency",
+        "chinese": "数字货币"
+    },
+    {
+        "english": "Virtual Reality Currency (VRCCY)",
+        "chinese": "虚拟货币"
+    },
+    {
+        "english": "Driverless",
+        "chinese": "无人驾驶"
+    },
+    {
+        "english": "Mobile Internet",
+        "chinese": "移动互联网"
+    },
+    {
+        "english": "Edge Computing",
+        "chinese": "边缘计算"
+    },
+    {
+        "english": "Fog Computing",
+        "chinese": "雾计算"
+    },
+    {
+        "english": "Initiating Process Group",
+        "chinese": "启动过程组"
+    },
+    {
+        "english": "Planning Process Group",
+        "chinese": "规划过程组"
+    },
+    {
+        "english": "Executing Process Group",
+        "chinese": "执行过程组"
+    },
+    {
+        "english": "Monitoring and Controlling Process Group",
+        "chinese": "监控过程组"
+    },
+    {
+        "english": "Closing Process Group",
+        "chinese": "收尾过程组"
+    },
+    {
+        "english": "Integration Management",
+        "chinese": "项目整体管理"
+    },
+    {
+        "english": "Scope Management",
+        "chinese": "项目范围管理"
+    },
+    {
+        "english": "Schedule Management",
+        "chinese": "项目进度管理"
+    },
+    {
+        "english": "Cost Management",
+        "chinese": "项目成本管理"
+    },
+    {
+        "english": "Quality Management",
+        "chinese": "项目质量管理"
+    },
+    {
+        "english": "Resource Management",
+        "chinese": "项目资源管理"
+    },
+    {
+        "english": "Communications Management",
+        "chinese": "项目沟通管理"
+    },
+    {
+        "english": "Risk Management",
+        "chinese": "项目风险管理"
+    },
+    {
+        "english": "Procurement Management",
+        "chinese": "项目采购管理"
+    },
+    {
+        "english": "Stakeholder Management",
+        "chinese": "项目干系人管理"
+    },
+    {
+        "english": "Develop Project Charter",
+        "chinese": "制定项目章程"
+    },
+    {
+        "english": "Develop Project Management Plan",
+        "chinese": "制定项目管理计划"
+    },
+    {
+        "english": "Direct and Manage Project Work",
+        "chinese": "指导与管理项目工作"
+    },
+    {
+        "english": "Manage Project Knowledge",
+        "chinese": "管理项目知识"
+    },
+    {
+        "english": "Monitor and Control Project Work",
+        "chinese": "监控项目工作"
+    },
+    {
+        "english": "Perform Integrated Change Control",
+        "chinese": "实施整体变更控制"
+    },
+    {
+        "english": "Close Project or Phase",
+        "chinese": "结束项目或阶段"
+    },
+    {
+        "english": "Plan Scope Management",
+        "chinese": "规划范围管理"
+    },
+    {
+        "english": "Collect Requirements",
+        "chinese": "收集需求"
+    },
+    {
+        "english": "Define Scope",
+        "chinese": "定义范围"
+    },
+    {
+        "english": "Create WBS",
+        "chinese": "创建WBS"
+    },
+    {
+        "english": "Validate Scope",
+        "chinese": "确认范围"
+    },
+    {
+        "english": "Control Scope",
+        "chinese": "控制范围"
+    },
+    {
+        "english": "Plan Schedule Management",
+        "chinese": "规划进度管理"
+    },
+    {
+        "english": "Define Activities",
+        "chinese": "定义活动"
+    },
+    {
+        "english": "Sequence Activities",
+        "chinese": "排列活动顺序"
+    },
+    {
+        "english": "Estimate Activity Durations",
+        "chinese": "估算活动持续时间"
+    },
+    {
+        "english": "Develop Schedule",
+        "chinese": "制定进度计划"
+    },
+    {
+        "english": "Control Schedule",
+        "chinese": "控制进度"
+    },
+    {
+        "english": "Plan Cost Management",
+        "chinese": "规划成本管理"
+    },
+    {
+        "english": "Estimate Costs",
+        "chinese": "估算成本"
+    },
+    {
+        "english": "Determine Budget",
+        "chinese": "制定预算"
+    },
+    {
+        "english": "Control Costs",
+        "chinese": "控制成本"
+    },
+    {
+        "english": "Plan Quality Management",
+        "chinese": "规划质量管理"
+    },
+    {
+        "english": "Manage Quality",
+        "chinese": "管理质量"
+    },
+    {
+        "english": "Control Quality",
+        "chinese": "控制质量"
+    },
+    {
+        "english": "Plan Resource Management",
+        "chinese": "规划资源管理"
+    },
+    {
+        "english": "Estimate Activity Resources",
+        "chinese": "估算活动资源"
+    },
+    {
+        "english": "Acquire Resources",
+        "chinese": "获取资源"
+    },
+    {
+        "english": "Develop Team",
+        "chinese": "建设团队"
+    },
+    {
+        "english": "Manage Team",
+        "chinese": "管理团队"
+    },
+    {
+        "english": "Plan Communications Management",
+        "chinese": "规划沟通管理"
+    },
+    {
+        "english": "Manage Communications",
+        "chinese": "管理沟通"
+    },
+    {
+        "english": "Control Communications",
+        "chinese": "控制沟通"
+    },
+    {
+        "english": "Plan Risk Management",
+        "chinese": "规划风险管理"
+    },
+    {
+        "english": "Identify Risks",
+        "chinese": "识别风险"
+    },
+    {
+        "english": "Perform Qualitative Risk Analysis",
+        "chinese": "实施定性风险分析"
+    },
+    {
+        "english": "Perform Quantitative Risk Analysis",
+        "chinese": "实施定量风险分析"
+    },
+    {
+        "english": "Plan Risk Responses",
+        "chinese": "规划风险应对"
+    },
+    {
+        "english": "Implement Risk Responses",
+        "chinese": "实施风险应对"
+    },
+    {
+        "english": "Control Risks",
+        "chinese": "控制风险"
+    },
+    {
+        "english": "Plan Procurement Management",
+        "chinese": "规划采购管理"
+    },
+    {
+        "english": "Conduct Procurements",
+        "chinese": "实施采购"
+    },
+    {
+        "english": "Control Procurements",
+        "chinese": "控制采购"
+    },
+    {
+        "english": "Close Procurements",
+        "chinese": "结束采购"
+    },
+    {
+        "english": "Identify Stakeholders",
+        "chinese": "识别干系人"
+    },
+    {
+        "english": "Plan Stakeholder Engagement",
+        "chinese": "规划干系人参与"
+    },
+    {
+        "english": "Manage Stakeholder Engagement",
+        "chinese": "管理干系人参与"
+    },
+    {
+        "english": "Monitor Stakeholder Engagement",
+        "chinese": "监督干系人参与"
+    },
+    {
+        "english": "Expert Judgment",
+        "chinese": "专家判断"
+    },
+    {
+        "english": "Data Gathering",
+        "chinese": "数据收集"
+    },
+    {
+        "english": "Brainstorm",
+        "chinese": "头脑风暴"
+    },
+    {
+        "english": "Focus Groups",
+        "chinese": "焦点小组"
+    },
+    {
+        "english": "Interviews",
+        "chinese": "访谈"
+    },
+    {
+        "english": "Interpersonal and Team Skills",
+        "chinese": "人际关系与团队技能"
+    },
+    {
+        "english": "Conflict Management",
+        "chinese": "冲突管理"
+    },
+    {
+        "english": "Facilitation",
+        "chinese": "引导"
+    },
+    {
+        "english": "Meetings Management",
+        "chinese": "会议管理"
+    },
+    {
+        "english": "Meetings",
+        "chinese": "会议"
+    },
+    {
+        "english": "Checklist",
+        "chinese": "核对单"
+    },
+    {
+        "english": "Project Management Information System",
+        "chinese": "项目管理信息系统"
+    },
+    {
+        "english": "Knowledge Management",
+        "chinese": "知识管理"
+    },
+    {
+        "english": "Information Management",
+        "chinese": "信息管理"
+    },
+    {
+        "english": "Active Listening",
+        "chinese": "积极倾听"
+    },
+    {
+        "english": "Leadership Skills",
+        "chinese": "领导力"
+    },
+    {
+        "english": "Networking",
+        "chinese": "人际交往"
+    },
+    {
+        "english": "Big Picture",
+        "chinese": "大局观"
+    },
+    {
+        "english": "Data Analytical",
+        "chinese": "数据分析"
+    },
+    {
+        "english": "Alternative Analysis",
+        "chinese": "备选方案分析"
+    },
+    {
+        "english": "Cost-Benefit Analysis",
+        "chinese": "成本效益分析"
+    },
+    {
+        "english": "Earned Value Analysis",
+        "chinese": "挣值分析"
+    },
+    {
+        "english": "Root Cause Analysis",
+        "chinese": "根本原因分析"
+    },
+    {
+        "english": "Trend Analysis",
+        "chinese": "趋势分析"
+    },
+    {
+        "english": "Variance Analysis",
+        "chinese": "偏差分析"
+    },
+    {
+        "english": "Decision",
+        "chinese": "决策"
+    },
+    {
+        "english": "Change Control Tools",
+        "chinese": "变更控制工具"
+    },
+    {
+        "english": "Identify Configuration Items",
+        "chinese": "识别配置项"
+    },
+    {
+        "english": "Records and Reports the Status of Configuration Items",
+        "chinese": "记录并报告配置项状态"
+    },
+    {
+        "english": "Verify and Audit Configuration Items",
+        "chinese": "进行配置项核实与审计"
+    },
+    {
+        "english": "Identify Changes",
+        "chinese": "识别变更"
+    },
+    {
+        "english": "Changed Record",
+        "chinese": "记录变更"
+    },
+    {
+        "english": "Make a Change Decision",
+        "chinese": "做出变更决定"
+    },
+    {
+        "english": "Track Changes",
+        "chinese": "跟踪变更"
+    },
+    {
+        "english": "Vote",
+        "chinese": "投票"
+    },
+    {
+        "english": "Authoritarian Decision-Making",
+        "chinese": "独裁型决策制定"
+    },
+    {
+        "english": "Multi-Criteria Decision Analysis",
+        "chinese": "多标准决策分析"
+    },
+    {
+        "english": "Document Analysis",
+        "chinese": "文件分析"
+    },
+    {
+        "english": "Regression Analysis",
+        "chinese": "回归分析"
+    },
+    {
+        "english": "Questionnaires and Surveys",
+        "chinese": "问卷调查"
+    },
+    {
+        "english": "Benchmarking",
+        "chinese": "标杆对照"
+    },
+    {
+        "english": "Data Representation",
+        "chinese": "数据表现"
+    },
+    {
+        "english": "Affinity Diagrams",
+        "chinese": "亲和图"
+    },
+    {
+        "english": "Mind-Mapping",
+        "chinese": "思维导图"
+    },
+    {
+        "english": "Nominal Group Technique",
+        "chinese": "名义小组技术"
+    },
+    {
+        "english": "Observation and Conversation",
+        "chinese": "观察和交谈"
+    },
+    {
+        "english": "Context Diagrams",
+        "chinese": "系统交互图"
+    },
+    {
+        "english": "Prototypes",
+        "chinese": "原型法"
+    },
+    {
+        "english": "Product Analysis",
+        "chinese": "产品分析"
+    },
+    {
+        "english": "Decomposition",
+        "chinese": "分解"
+    },
+    {
+        "english": "Inspection",
+        "chinese": "检查"
+    },
+    {
+        "english": "Rolling Wave Planning",
+        "chinese": "滚动式规划"
+    },
+    {
+        "english": "Precedence Diagramming Method (PDM)",
+        "chinese": "紧前关系绘图法"
+    },
+    {
+        "english": "Arrow Diagramming Method (ADM)",
+        "chinese": "箭线图法"
+    },
+    {
+        "english": "Identify and Integrate Dependencies",
+        "chinese": "确定和整合依赖关系"
+    },
+    {
+        "english": "Leads and Lags",
+        "chinese": "提前量和滞后量"
+    },
+    {
+        "english": "Mandatory Dependency",
+        "chinese": "强制性依赖关系"
+    },
+    {
+        "english": "Discretionary Dependency",
+        "chinese": "选择性依赖关系"
+    },
+    {
+        "english": "External Dependency",
+        "chinese": "外部依赖关系"
+    },
+    {
+        "english": "Internal Dependencies",
+        "chinese": "内部依赖关系"
+    },
+    {
+        "english": "Analogous Estimating",
+        "chinese": "类比估算"
+    },
+    {
+        "english": "Parametric Estimating",
+        "chinese": "参数估算"
+    },
+    {
+        "english": "Three-Point Estimating",
+        "chinese": "三点估算"
+    },
+    {
+        "english": "Bottom-Up Estimating",
+        "chinese": "自下而上估算"
+    },
+    {
+        "english": "Reserve Analysis",
+        "chinese": "储备分析"
+    },
+    {
+        "english": "Schedule Network Analysis",
+        "chinese": "进度网络分析"
+    },
+    {
+        "english": "Critical Path Method",
+        "chinese": "关键路径法"
+    },
+    {
+        "english": "Resource Optimization",
+        "chinese": "资源优化"
+    },
+    {
+        "english": "Resource Leveling",
+        "chinese": "资源平衡"
+    },
+    {
+        "english": "Resource Smoothing",
+        "chinese": "资源平滑"
+    },
+    {
+        "english": "What-If Scenario Analysis",
+        "chinese": "假设情景分析"
+    },
+    {
+        "english": "Simulation",
+        "chinese": "模拟"
+    },
+    {
+        "english": "Schedule Compression",
+        "chinese": "进度压缩"
+    },
+    {
+        "english": "Fast Tracking",
+        "chinese": "快速跟进"
+    },
+    {
+        "english": "Crashing",
+        "chinese": "赶工"
+    },
+    {
+        "english": "Program Evaluation and Review Technique (PERT)",
+        "chinese": "计划评审技术"
+    },
+    {
+        "english": "Agile or Adaptive Release Planning",
+        "chinese": "敏捷或适应型发布规划"
+    },
+    {
+        "english": "Sprint Burn Down Chart",
+        "chinese": "迭代燃尽图"
+    },
+    {
+        "english": "Performance Reviews",
+        "chinese": "绩效审查"
+    },
+    {
+        "english": "Cost of Quality",
+        "chinese": "质量成本"
+    },
+    {
+        "english": "Cost Aggregation",
+        "chinese": "成本汇总"
+    },
+    {
+        "english": "Historical Information Audit",
+        "chinese": "历史信息审核"
+    },
+    {
+        "english": "Funding Limit Reconciliation",
+        "chinese": "资金限制平衡"
+    },
+    {
+        "english": "Financing",
+        "chinese": "融资"
+    },
+    {
+        "english": "Planned Value (PV)",
+        "chinese": "计划价值"
+    },
+    {
+        "english": "Earned Value (EV)",
+        "chinese": "挣值"
+    },
+    {
+        "english": "Actual Cost (AC)",
+        "chinese": "实际成本"
+    },
+    {
+        "english": "Schedule Variance (SV)",
+        "chinese": "进度偏差"
+    },
+    {
+        "english": "Cost Variance (CV)",
+        "chinese": "成本偏差"
+    },
+    {
+        "english": "Schedule Performance Index (SPI)",
+        "chinese": "进度绩效指数"
+    },
+    {
+        "english": "Cost Performance Index (CPI)",
+        "chinese": "成本绩效指数"
+    },
+    {
+        "english": "Chart",
+        "chinese": "图表"
+    },
+    {
+        "english": "Forecast",
+        "chinese": "预测"
+    },
+    {
+        "english": "To-Complete Performance Index (TCPI)",
+        "chinese": "完工尚需绩效指数"
+    },
+    {
+        "english": "Decision-Making Techniques",
+        "chinese": "决策技术"
+    },
+    {
+        "english": "Flowchart",
+        "chinese": "流程图"
+    },
+    {
+        "english": "Logical Data Model",
+        "chinese": "逻辑数据模型"
+    },
+    {
+        "english": "Matrix Diagrams",
+        "chinese": "矩阵图"
+    },
+    {
+        "english": "Planning of Tests and Inspections",
+        "chinese": "测试与检查的规划"
+    },
+    {
+        "english": "Process Analysis",
+        "chinese": "过程分析"
+    },
+    {
+        "english": "Cause and Effect Diagram",
+        "chinese": "因果图"
+    },
+    {
+        "english": "Histogram",
+        "chinese": "直方图"
+    },
+    {
+        "english": "Scatter Diagram",
+        "chinese": "散点图"
+    },
+    {
+        "english": "Audits",
+        "chinese": "审计"
+    },
+    {
+        "english": "Design for X (DFX)",
+        "chinese": "面向X的设计"
+    },
+    {
+        "english": "Problem Solving",
+        "chinese": "问题解决"
+    },
+    {
+        "english": "Quality Improvement Methods",
+        "chinese": "质量改进方法"
+    },
+    {
+        "english": "Checksheets",
+        "chinese": "核查表"
+    },
+    {
+        "english": "Statistical Sampling",
+        "chinese": "统计抽样"
+    },
+    {
+        "english": "Test Product Evaluation",
+        "chinese": "测试/产品评估"
+    },
+    {
+        "english": "Control Chart",
+        "chinese": "控制图"
+    },
+    {
+        "english": "Work Breakdown Structure (WBS)",
+        "chinese": "工作分解结构"
+    },
+    {
+        "english": "Organizational Breakdown Structure (OBS)",
+        "chinese": "组织分解结构"
+    },
+    {
+        "english": "Resource Breakdown Structure (RBS)",
+        "chinese": "资源分解结构"
+    },
+    {
+        "english": "Organizational Theory",
+        "chinese": "组织理论"
+    },
+    {
+        "english": "Functional Manager",
+        "chinese": "职能经理"
+    },
+    {
+        "english": "Executes Other Project Management Teams in the Organization",
+        "chinese": "执行组织中的其他项目管理团队"
+    },
+    {
+        "english": "External Organizations and Vendors",
+        "chinese": "外部组织和供应商"
+    },
+    {
+        "english": "Pre-Assignment",
+        "chinese": "预分派"
+    },
+    {
+        "english": "Virtual Teams",
+        "chinese": "虚拟团队"
+    },
+    {
+        "english": "Colocation",
+        "chinese": "集中办公"
+    },
+    {
+        "english": "Communication Technology",
+        "chinese": "沟通技术"
+    },
+    {
+        "english": "Share the Portal",
+        "chinese": "共享门户"
+    },
+    {
+        "english": "Videoconferencing",
+        "chinese": "视频会议"
+    },
+    {
+        "english": "Audio Conferencing",
+        "chinese": "音频会议"
+    },
+    {
+        "english": "Email Chat Software",
+        "chinese": "电子邮件/聊天软件"
+    },
+    {
+        "english": "Influence",
+        "chinese": "影响力"
+    },
+    {
+        "english": "Incentive",
+        "chinese": "激励"
+    },
+    {
+        "english": "Negotiation",
+        "chinese": "谈判"
+    },
+    {
+        "english": "Team-Building",
+        "chinese": "团队建设"
+    },
+    {
+        "english": "Recognition and Rewards",
+        "chinese": "认可与鼓励"
+    },
+    {
+        "english": "Training",
+        "chinese": "培训"
+    },
+    {
+        "english": "Individual and Team Assessments",
+        "chinese": "个人和团队评估"
+    },
+    {
+        "english": "Decision Making",
+        "chinese": "制定决策"
+    },
+    {
+        "english": "Emotional Intelligence",
+        "chinese": "情商"
+    },
+    {
+        "english": "Communication Requirements Analysis",
+        "chinese": "沟通需求分析"
+    },
+    {
+        "english": "Communication Model",
+        "chinese": "沟通模型"
+    },
+    {
+        "english": "Communication Methods",
+        "chinese": "沟通方法"
+    },
+    {
+        "english": "Interactive Communication",
+        "chinese": "互动沟通"
+    },
+    {
+        "english": "Push Communication",
+        "chinese": "推式沟通"
+    },
+    {
+        "english": "Pull Communication",
+        "chinese": "拉式沟通"
+    },
+    {
+        "english": "Communication Styles Assessment",
+        "chinese": "沟通风格评估"
+    },
+    {
+        "english": "Policy Awareness",
+        "chinese": "政策意识"
+    },
+    {
+        "english": "Cultural Awareness",
+        "chinese": "文化意识"
+    },
+    {
+        "english": "Communication Skills",
+        "chinese": "沟通技能"
+    },
+    {
+        "english": "Project Paper",
+        "chinese": "项目报告"
+    },
+    {
+        "english": "Communication Competence",
+        "chinese": "沟通胜任力"
+    },
+    {
+        "english": "Feedback",
+        "chinese": "反馈"
+    },
+    {
+        "english": "Non-Verbal Skills",
+        "chinese": "非口头技能"
+    },
+    {
+        "english": "Demo",
+        "chinese": "演示"
+    },
+    {
+        "english": "Analysis of Assumptions and Constraints",
+        "chinese": "假设条件和制约因素分析"
+    },
+    {
+        "english": "SWOT Analysis",
+        "chinese": "SWOT分析"
+    },
+    {
+        "english": "Cue List",
+        "chinese": "提示清单"
+    },
+    {
+        "english": "Risk Data Quality Assessment",
+        "chinese": "风险数据质量评估"
+    },
+    {
+        "english": "Risk Probability and Impact Assessment",
+        "chinese": "风险概率和影响评估"
+    },
+    {
+        "english": "Risk Categorization",
+        "chinese": "风险分类"
+    },
+    {
+        "english": "Probability and Impact Matrix",
+        "chinese": "概率和影响矩阵"
+    },
+    {
+        "english": "Manifestations of Uncertainty",
+        "chinese": "不确定性表现形式"
+    },
+    {
+        "english": "Sensitivity Analysis",
+        "chinese": "敏感性分析"
+    },
+    {
+        "english": "Decision Tree Analysis",
+        "chinese": "决策树分析"
+    },
+    {
+        "english": "Strategies for Threats",
+        "chinese": "威胁应对策略"
+    },
+    {
+        "english": "Escalation, Avoid, Mitigate, Transfer, Accept",
+        "chinese": "上报、规避、转移、减轻、接受"
+    },
+    {
+        "english": "Strategies for Chance",
+        "chinese": "机会应对策略"
+    },
+    {
+        "english": "Contingent Response Strategies",
+        "chinese": "应急应对策略"
+    },
+    {
+        "english": "Escalation, Exploit, Share, Enhance, Accept",
+        "chinese": "上报、开拓、分享、提高、接受"
+    },
+    {
+        "english": "Strategies for Overall Project Risks",
+        "chinese": "整体项目风险应对策略"
+    },
+    {
+        "english": "Technical Performance Analysis",
+        "chinese": "技术绩效分析"
+    },
+    {
+        "english": "Supply-Side Selection Analysis",
+        "chinese": "供方选择分析"
+    },
+    {
+        "english": "Minimum Cost",
+        "chinese": "最低成本"
+    },
+    {
+        "english": "Qualifications Alone",
+        "chinese": "仅凭资质"
+    },
+    {
+        "english": "Score Based on Quality or Technical Solutions",
+        "chinese": "基于质量或技术方案得分"
+    },
+    {
+        "english": "Based on Quality and Cost",
+        "chinese": "基于质量和成本"
+    },
+    {
+        "english": "Single-Source",
+        "chinese": "唯一来源"
+    },
+    {
+        "english": "Fixed Budget",
+        "chinese": "固定预算"
+    },
+    {
+        "english": "Advertising",
+        "chinese": "广告"
+    },
+    {
+        "english": "Bidder Conference",
+        "chinese": "投标人会议"
+    },
+    {
+        "english": "Claims Administration",
+        "chinese": "索赔管理"
+    },
+    {
+        "english": "Stakeholder Analysis",
+        "chinese": "干系人分析"
+    },
+    {
+        "english": "Power Interest Square",
+        "chinese": "权力利益方格"
+    },
+    {
+        "english": "Stake Cube",
+        "chinese": "干系人立方体"
+    },
+    {
+        "english": "Highlight the Model",
+        "chinese": "凸显模型"
+    },
+    {
+        "english": "Influence Direction",
+        "chinese": "影响方向"
+    },
+    {
+        "english": "Prioritization",
+        "chinese": "优先级排序"
+    },
+    {
+        "english": "Stakeholder Engagement Assessment Matrix",
+        "chinese": "干系人参与度评估矩阵"
+    },
+    {
+        "english": "Ground Rules",
+        "chinese": "基本原则"
+    },
+    {
+        "english": "Project Management Documents",
+        "chinese": "立项管理文件"
+    },
+    {
+        "english": "Agreements",
+        "chinese": "协议"
+    },
+    {
+        "english": "Enterprise Environmental Factors",
+        "chinese": "事业环境因素"
+    },
+    {
+        "english": "Organizational Process Assets",
+        "chinese": "组织过程资产"
+    },
+    {
+        "english": "Project Charter",
+        "chinese": "项目章程"
+    },
+    {
+        "english": "Assumption Log",
+        "chinese": "假设日志"
+    },
+    {
+        "english": "Output of the Planning Process for Other Knowledge Areas",
+        "chinese": "其他知识领域规划过程的输出"
+    },
+    {
+        "english": "Project Management Plan",
+        "chinese": "项目管理计划"
+    },
+    {
+        "english": "Sub-Management Plan",
+        "chinese": "子管理计划"
+    },
+    {
+        "english": "Baseline",
+        "chinese": "基准"
+    },
+    {
+        "english": "Other Components",
+        "chinese": "其他组件"
+    },
+    {
+        "english": "Project Documents",
+        "chinese": "项目文件"
+    },
+    {
+        "english": "Approved Change Request",
+        "chinese": "批准的变更要求"
+    },
+    {
+        "english": "Requirements Traceability Matrix",
+        "chinese": "需求跟踪矩阵"
+    },
+    {
+        "english": "Risk Register",
+        "chinese": "风险登记册"
+    },
+    {
+        "english": "Risk Report",
+        "chinese": "风险报告"
+    },
+    {
+        "english": "Milestone List",
+        "chinese": "里程碑清单"
+    },
+    {
+        "english": "Project Schedule",
+        "chinese": "项目进度计划"
+    },
+    {
+        "english": "Project Communications Records",
+        "chinese": "项目沟通记录"
+    },
+    {
+        "english": "Lessons Learned Register",
+        "chinese": "经验教训登记册"
+    },
+    {
+        "english": "Change Log",
+        "chinese": "变更日志"
+    },
+    {
+        "english": "Deliverables",
+        "chinese": "可交付成果"
+    },
+    {
+        "english": "Work Performance Data",
+        "chinese": "工作绩效数据"
+    },
+    {
+        "english": "Issue Log",
+        "chinese": "问题日志"
+    },
+    {
+        "english": "Change Request",
+        "chinese": "变更请求"
+    },
+    {
+        "english": "Corrective Action",
+        "chinese": "纠正措施"
+    },
+    {
+        "english": "Preventive Action",
+        "chinese": "预防措施"
+    },
+    {
+        "english": "Defective Action",
+        "chinese": "缺陷措施"
+    },
+    {
+        "english": "Update",
+        "chinese": "更新"
+    },
+    {
+        "english": "Activity List",
+        "chinese": "活动清单"
+    },
+    {
+        "english": "Requirements Documentation",
+        "chinese": "需求文件"
+    },
+    {
+        "english": "Stakeholder Register",
+        "chinese": "干系人登记册"
+    },
+    {
+        "english": "Resource Breakdown Structure",
+        "chinese": "资源分解结构"
+    },
+    {
+        "english": "The Project Team Dispatches Work Orders",
+        "chinese": "项目团队派工单"
+    },
+    {
+        "english": "Source Selection Criteria",
+        "chinese": "供方选择标准"
+    },
+    {
+        "english": "Personnel Management System",
+        "chinese": "人事管理制度"
+    },
+    {
+        "english": "The Organization's Requirements for Communication",
+        "chinese": "组织对沟通的要求"
+    },
+    {
+        "english": "Basis of Estimates",
+        "chinese": "估算依据"
+    },
+    {
+        "english": "Cost Forecasts",
+        "chinese": "成本预测"
+    },
+    {
+        "english": "Schedule Forecasts",
+        "chinese": "进度预测"
+    },
+    {
+        "english": "Quality Report",
+        "chinese": "质量报告"
+    },
+    {
+        "english": "Work Performance Information",
+        "chinese": "工作绩效信息"
+    },
+    {
+        "english": "Work Performance Reports",
+        "chinese": "工作绩效报告"
+    },
+    {
+        "english": "Change Requirements",
+        "chinese": "变更需求"
+    },
+    {
+        "english": "Defect Repair",
+        "chinese": "缺陷补救"
+    },
+    {
+        "english": "Change Management Plan",
+        "chinese": "变更管理计划"
+    },
+    {
+        "english": "Configuration Management Plan",
+        "chinese": "配置管理计划"
+    },
+    {
+        "english": "Scope Baseline",
+        "chinese": "范围基准"
+    },
+    {
+        "english": "Schedule Baseline",
+        "chinese": "进度基准"
+    },
+    {
+        "english": "Cost Baseline",
+        "chinese": "成本基准"
+    },
+    {
+        "english": "Quality Control Measurements",
+        "chinese": "质量控制测量结果"
+    },
+    {
+        "english": "Accepted Deliverables",
+        "chinese": "验收的可交付成果"
+    },
+    {
+        "english": "Procurement Documentation",
+        "chinese": "采购文档"
+    },
+    {
+        "english": "Configure the Management Repository",
+        "chinese": "配置管理知识库"
+    },
+    {
+        "english": "Final Product, Service, or Result",
+        "chinese": "最终产品、服务或成果"
+    },
+    {
+        "english": "Final Report of the Project",
+        "chinese": "项目最终报告"
+    },
+    {
+        "english": "Operations and Support Documentation",
+        "chinese": "运营和支持文件"
+    },
+    {
+        "english": "Project or Phase Closure Documents",
+        "chinese": "项目或阶段收尾文件"
+    },
+    {
+        "english": "Lessons Learned Repository",
+        "chinese": "经验教训知识库"
+    },
+    {
+        "english": "Quality Management Plan",
+        "chinese": "质量管理计划"
+    },
+    {
+        "english": "Project Lifecycle Description",
+        "chinese": "项目生命周期描述"
+    },
+    {
+        "english": "Development Approach",
+        "chinese": "开发方法"
+    },
+    {
+        "english": "Scope Management Plan",
+        "chinese": "范围管理计划"
+    },
+    {
+        "english": "Requirements Management Plan",
+        "chinese": "需求管理计划"
+    },
+    {
+        "english": "Stakeholder Participate Plan",
+        "chinese": "干系人参与计划"
+    },
+    {
+        "english": "Business Requirement",
+        "chinese": "业务需求"
+    },
+    {
+        "english": "Stakeholder Requirement",
+        "chinese": "干系人需求"
+    },
+    {
+        "english": "Solution Requirement",
+        "chinese": "解决方案需求"
+    },
+    {
+        "english": "Transition and Readiness Requirement",
+        "chinese": "过渡和就绪需求"
+    },
+    {
+        "english": "Project Requirement",
+        "chinese": "项目需求"
+    },
+    {
+        "english": "Quality Requirement",
+        "chinese": "质量需求"
+    },
+    {
+        "english": "Project Scope Statement",
+        "chinese": "项目范围说明书"
+    },
+    {
+        "english": "Product Scope Description",
+        "chinese": "产品范围描述"
+    },
+    {
+        "english": "Acceptance Criteria",
+        "chinese": "验收标准"
+    },
+    {
+        "english": "Project Exclusions",
+        "chinese": "项目的除外责任"
+    },
+    {
+        "english": "Planning Package",
+        "chinese": "规划包"
+    },
+    {
+        "english": "Work Package",
+        "chinese": "工作包"
+    },
+    {
+        "english": "Validated Deliverables",
+        "chinese": "核实的可交付成果"
+    },
+    {
+        "english": "Performance Measurement Baseline (PMB)",
+        "chinese": "绩效测量基准"
+    },
+    {
+        "english": "Schedule Management Plan",
+        "chinese": "进度管理计划"
+    },
+    {
+        "english": "Project Schedule Model",
+        "chinese": "项目进度模型"
+    },
+    {
+        "english": "Release and Iteration Length of the Schedule",
+        "chinese": "进度计划的发布和迭代长度"
+    },
+    {
+        "english": "Accuracy",
+        "chinese": "准确度"
+    },
+    {
+        "english": "Unit of Measure",
+        "chinese": "计量单位"
+    },
+    {
+        "english": "Project Schedule Model Maintenance",
+        "chinese": "项目进度模型维护"
+    },
+    {
+        "english": "Control Critical Values",
+        "chinese": "控制临界值"
+    },
+    {
+        "english": "Performance Measurement Rules",
+        "chinese": "绩效测量规则"
+    },
+    {
+        "english": "Report Format",
+        "chinese": "报告格式"
+    },
+    {
+        "english": "Activity Attributes",
+        "chinese": "活动属性"
+    },
+    {
+        "english": "Project Schedule Network Diagrams",
+        "chinese": "项目进度网络图"
+    },
+    {
+        "english": "Resource Requirement",
+        "chinese": "资源需求"
+    },
+    {
+        "english": "Resource Calendars",
+        "chinese": "资源日历"
+    },
+    {
+        "english": "Duration Estimates",
+        "chinese": "持续时间估算"
+    },
+    {
+        "english": "Bar Chart",
+        "chinese": "横道图"
+    },
+    {
+        "english": "Milestone Chart",
+        "chinese": "里程碑图"
+    },
+    {
+        "english": "Schedule Data",
+        "chinese": "进度数据"
+    },
+    {
+        "english": "Project Calendars",
+        "chinese": "项目日历"
+    },
+    {
+        "english": "Risk Management Plan",
+        "chinese": "风险管理计划"
+    },
+    {
+        "english": "Cost Management Plan",
+        "chinese": "成本管理计划"
+    },
+    {
+        "english": "Precision",
+        "chinese": "精确度"
+    },
+    {
+        "english": "Organize Program Link",
+        "chinese": "组织程序链接"
+    },
+    {
+        "english": "Cost Estimates",
+        "chinese": "成本估算"
+    },
+    {
+        "english": "Feasibility Study Documents",
+        "chinese": "可行性研究文件"
+    },
+    {
+        "english": "Feasibility Study Report",
+        "chinese": "可行性研究报告"
+    },
+    {
+        "english": "Project Evaluation Report",
+        "chinese": "项目评估报告"
+    },
+    {
+        "english": "Project Funding Requirements",
+        "chinese": "项目资金需求"
+    },
+    {
+        "english": "Quality Metrics",
+        "chinese": "质量测量指标"
+    },
+    {
+        "english": "Test and Evaluation Documents",
+        "chinese": "测试与评估文件"
+    },
+    {
+        "english": "Resource Management Plan",
+        "chinese": "资源管理计划"
+    },
+    {
+        "english": "Identify the Resource",
+        "chinese": "识别资源"
+    },
+    {
+        "english": "Acquire Resources",
+        "chinese": "获取资源"
+    },
+    {
+        "english": "Roles and Responsibilities",
+        "chinese": "角色与职责"
+    },
+    {
+        "english": "Project Organization Chart",
+        "chinese": "项目组织图"
+    },
+    {
+        "english": "Project Team Resource Management",
+        "chinese": "项目团队资源管理"
+    },
+    {
+        "english": "Team Building",
+        "chinese": "团队建设"
+    },
+    {
+        "english": "Accreditation Program",
+        "chinese": "认可计划"
+    },
+    {
+        "english": "Team Charter",
+        "chinese": "团队章程"
+    },
+    {
+        "english": "Resource Requirements",
+        "chinese": "资源需求"
+    },
+    {
+        "english": "Procurement Management Plan",
+        "chinese": "采购管理计划"
+    },
+    {
+        "english": "Material Resource Allocation Sheet",
+        "chinese": "物质资源分配单"
+    },
+    {
+        "english": "Team Performance Assessments",
+        "chinese": "团队绩效评价"
+    },
+    {
+        "english": "Communications Management Plan",
+        "chinese": "沟通管理计划"
+    },
+    {
+        "english": "Risk Management Strategies",
+        "chinese": "风险管理策略"
+    },
+    {
+        "english": "Methodology",
+        "chinese": "方法论"
+    },
+    {
+        "english": "Funding",
+        "chinese": "资金"
+    },
+    {
+        "english": "Timing",
+        "chinese": "时间安排"
+    },
+    {
+        "english": "Risk Category",
+        "chinese": "风险类别"
+    },
+    {
+        "english": "Stakeholder Risk Appetite",
+        "chinese": "干系人风险偏好"
+    },
+    {
+        "english": "Risk Probability and Impact",
+        "chinese": "风险概率和影响"
+    },
+    {
+        "english": "Traceability",
+        "chinese": "跟踪"
+    },
+    {
+        "english": "Risk Response Recommendations",
+        "chinese": "风险应对建议"
+    },
+    {
+        "english": "Fixed-Price Contract",
+        "chinese": "总价合同"
+    },
+    {
+        "english": "Cost-Reimbursable Contract",
+        "chinese": "成本补偿合同"
+    },
+    {
+        "english": "Time and Material Contract (T&M)",
+        "chinese": "工料合同"
+    },
+    {
+        "english": "Procurement Strategy",
+        "chinese": "采购策略"
+    },
+    {
+        "english": "Delivery Method",
+        "chinese": "交付方法"
+    },
+    {
+        "english": "Contract Payment Type",
+        "chinese": "合同支付类型"
+    },
+    {
+        "english": "Procurement Phase",
+        "chinese": "采购阶段"
+    },
+    {
+        "english": "Procurement Statement of Work",
+        "chinese": "采购工作说明书"
+    },
+    {
+        "english": "Bid Documents",
+        "chinese": "招标文件"
+    },
+    {
+        "english": "Request for Information (RFI)",
+        "chinese": "信息邀请书"
+    },
+    {
+        "english": "Request for Proposal (RFP)",
+        "chinese": "建议邀请书"
+    },
+    {
+        "english": "Request for Quotation (RFQ)",
+        "chinese": "报价邀请书"
+    },
+    {
+        "english": "Make-or-Buy Decisions",
+        "chinese": "自制或外购决策"
+    },
+    {
+        "english": "Independent Cost Estimates",
+        "chinese": "独立成本估算"
+    },
+    {
+        "english": "Seller Proposals",
+        "chinese": "卖方建议书"
+    },
+    {
+        "english": "Selected Sellers",
+        "chinese": "选定的卖方"
+    },
+    {
+        "english": "Procurement is Closed",
+        "chinese": "采购关闭"
+    },
+    {
+        "english": "Payment Schedules and Requests",
+        "chinese": "支付计划和请求"
+    },
+    {
+        "english": "Seller Performance Evaluation Documents",
+        "chinese": "卖方绩效评估文件"
+    },
+    {
+        "english": "Pre-Qualified Seller List Update",
+        "chinese": "预审合格卖方清单更新"
+    },
+    {
+        "english": "Procurement Dossier",
+        "chinese": "采购档案"
+    },
+    {
+        "english": "Identity Information",
+        "chinese": "身份信息"
+    },
+    {
+        "english": "Stakeholder Classification",
+        "chinese": "干系人分类"
+    },
+    {
+        "english": "Evaluate Information",
+        "chinese": "评估信息"
+    },
+    {
+        "english": "Project Management Plan Updates",
+        "chinese": "项目管理计划更新"
+    },
+    {
+        "english": "Project Documents Updates",
+        "chinese": "项目文件更新"
+    },
+    {
+        "english": "Organizational Process Assets Updates",
+        "chinese": "组织过程资产更新"
+    },
+    {
+        "english": "Enterprise Environmental Factors Updates",
+        "chinese": "事业环境因素更新"
+    },
+    {
+        "english": "Procurement Documentation Updates",
+        "chinese": "采购文档更新"
+    }
+]

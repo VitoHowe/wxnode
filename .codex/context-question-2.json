@@ -1,0 +1,20 @@
+﻿{
+  "question": "上传接口输入格式？",
+  "analysis": {
+    "existingUpload": "文件路由（src/routes/files.ts）统一使用 multer.diskStorage + authenticateToken，Swagger 也描述 multipart/form-data。",
+    "bodyLimit": "app.ts 设置 express.json limit 10mb，若直接 POST JSON 受限且无法传文件元数据。",
+    "validation": "validationSchemas.fileUpload 使用 Joi 校验 name/fileType；可新增词书校验确保必要字段。",
+    "implication": "沿用 multer 接收 JSON 文件（.json），解析后写入数据库，兼容大文件并避免 body limit 问题。"
+  },
+  "decision": "新增 /api/word-books/upload 接口，复用 multer.single('file')，要求 multipart/form-data 并验证文件扩展为 .json。",
+  "evidence": [
+    {
+      "file": "src/routes/files.ts",
+      "note": "展示 multer 配置、鉴权模式、Swagger 注释。"
+    },
+    {
+      "file": "src/app.ts",
+      "note": "express.json limit 10mb，印证 multipart 更适合。"
+    }
+  ]
+}

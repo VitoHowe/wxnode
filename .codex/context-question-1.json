@@ -1,0 +1,22 @@
+﻿{
+  "question": "单词书上传数据应如何落库？",
+  "analysis": {
+    "dbPattern": "createTables 函数集中创建 MySQL 表（src/config/database.ts）。所有业务实体（question_banks、question_chapters、questions 等）均在此定义并在启动时自动迁移。",
+    "uploadPattern": "文件上传/解析使用 fileService.uploadJsonFile，将 JSON 入库（question_banks + questions），同时保留原文件路径。",
+    "storageOptions": [
+      "沿用 uploads 目录保存原始 JSON，数据库中存储结构化数据，便于查询",
+      "若仅存文件，则列表/按书查询需要逐文件解析，性能差且与现有模式不一致"
+    ]
+  },
+  "decision": "新增 word_books（书元数据）+ word_book_entries（词条）表，上传接口解析 JSON 批量写入 entries，并保存原始文件路径以便审计。",
+  "evidence": [
+    {
+      "file": "src/config/database.ts",
+      "note": "createTables 中集中维护 schema，需在此新增词书表确保启动自动建表"
+    },
+    {
+      "file": "src/services/fileService.ts",
+      "note": "上传 JSON 题库示例说明了解析后落库+保留文件的先例，可复用模式"
+    }
+  ]
+}

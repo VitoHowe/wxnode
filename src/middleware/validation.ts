@@ -487,7 +487,43 @@ export const validationSchemas = {
     }),
   },
 
-  // 更新文件解析状态
+
+  // 单词书上传
+  wordBookUpload: {
+    body: Joi.object({
+      name: Joi.string().max(200).optional().messages({
+        'string.max': '单词书名称长度不能超过200个字符',
+      }),
+      description: Joi.string().max(500).allow('', null).optional().messages({
+        'string.max': '描述长度不能超过500个字符',
+      }),
+      language: Joi.string().max(20).optional().messages({
+        'string.max': '语言标识长度不能超过20个字符',
+      }),
+    }),
+  },
+
+  // 单词书列表查询
+  wordBookList: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(10),
+      keyword: Joi.string().max(200).optional(),
+      language: Joi.string().max(20).optional(),
+    }),
+  },
+
+  // 单词条目查询
+  wordBookEntriesQuery: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必填项',
+      }),
+    }),
+    query: Joi.object().optional(),
+  },
+
   updateFileParseStatus: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({

@@ -1,0 +1,34 @@
+﻿{
+  "moduleLocation": {
+    "entry": "src/app.ts",
+    "routes": "src/routes",
+    "controllers": "src/controllers",
+    "services": "src/services",
+    "database": "src/config/database.ts"
+  },
+  "currentImplementation": "现有系统使用 Express + mysql2 手写 SQL，通过 controllers -> services -> database 流程管理题库/章节/文件等业务，app.ts 中统一注册路由并使用 helmet/cors/morgan/Swagger。",
+  "similarPatterns": [
+    "题库上传及解析流程：src/routes/files.ts + src/controllers/fileController.ts + src/services/fileService.ts，提供文件上传到 uploads 目录并写入 question_banks 表，可复用上传校验/鉴权/日志模式。",
+    "题库/章节查询模式：src/routes/chapters.ts + src/controllers/chapterController.ts + src/services/chapterService.ts，示范如何暴露 REST 接口并使用 mysql 查询。",
+    "数据库建表策略：src/config/database.ts 的 createTables 函数里集中维护全部表结构（MySQL utf8mb4），新增业务需要在此处创建表并在 connectDB 启动时自动迁移。"
+  ],
+  "techStack": {
+    "http": "Express 4",
+    "auth": "JWT 中间件 authenticateToken (src/middleware/auth)",
+    "db": "mysql2/promise + 手写 SQL",
+    "upload": "multer 磁盘存储 + 自定义路径映射",
+    "validation": "Joi schema (src/middleware/validation.ts)",
+    "logging": "winston logger, Request 日志 morgan",
+    "docs": "swagger-jsdoc + swagger-ui-express"
+  },
+  "testing": {
+    "framework": "Jest (package.json:test)",
+    "existingFiles": "未在 src/tests 看到现成测试，需要自行新增单元/集成测试。"
+  },
+  "observations": [
+    "数据库初始化脚本较大，需要谨慎插入新的建表语句并保持错误处理模式。",
+    "上传目录及 JSON 导入已有示例，可考虑将单词书上传也放到 uploads 并同步入库。",
+    "系统默认 JSON body 限制 10MB，如单词书较大需评估上传方式（直接 JSON body 还是文件）。",
+    "需核对 swagger 注释和 validation schemas 以保证新接口文档与校验一致。"
+  ]
+}

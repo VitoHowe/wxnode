@@ -1,0 +1,4 @@
+﻿- [x] 我能定义清晰的接口契约：上传接口采用 multipart/form-data(JSON 文件 + 书名等元数据)，列表/按ID查询返回结构化 JSON 数据。
+- [x] 我理解关键技术选型：沿用 Express + multer + mysql2，新建 word_books/word_book_entries 表并批量插入，原因是方便查询与扩展。
+- [x] 我识别了主要风险：大文件解析、重复上传、JSON 结构差异、批量写入性能；计划通过验证字段、事务/批量插入、唯一约束应对。
+- [x] 我知道如何验证实现：使用 Jest 编写 service 层单测、通过 supertest/请求模拟测试上传与列表接口，运行 npm test，并在 `.codex/testing.md` 记录。 
