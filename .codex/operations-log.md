@@ -43,3 +43,8 @@
 | 2025-11-11T16:59:52 | shell:Set-Content update_validation_query.py | 创建脚本更新 wordBookEntriesQuery 校验 |
 | 2025-11-11T16:59:52 | shell:python update_validation_query.py | 执行脚本 |
 | 2025-11-11T16:59:52 | shell:Remove-Item update_validation_query.py | 删除脚本 |
+| 2025-11-12T12:06:54 | shell:powershell encoding | 执行 UTF-8 输入/输出设定和 chcp 65001 |
+| 2025-11-12T12:06:54 | tool:list_mcp_resources | 查询 MCP 资源列表，结果为空 |
+| 2025-11-12T12:06:54 | tool:list_mcp_resource_templates | 查询 MCP 资源模板，结果为空 |
+| 2025-11-12T12:06:54 | python:update sequential-thinking | 追加当前任务的思考记录 |
+| 2025-11-12T12:06:54 | rg:mcp search | 检索仓库配置，未发现 mcp_servers 定义 |

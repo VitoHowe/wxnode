@@ -524,6 +524,63 @@ export const validationSchemas = {
     query: Joi.object().optional(),
   },
 
+  // 单词练习：书籍路径参数
+  wordPracticeBookParam: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId必须是数字',
+        'any.required': 'bookId是必填项',
+      }),
+    }),
+  },
+
+  // 单词练习：获取单词列表（分页）
+  wordPracticeWordsQuery: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId必须是数字',
+        'any.required': 'bookId是必填项',
+      }),
+    }),
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(200).default(50),
+    }),
+  },
+
+  // 单词练习：更新进度
+  wordPracticeUpdateProgress: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId必须是数字',
+        'any.required': 'bookId是必填项',
+      }),
+    }),
+    body: Joi.object({
+      word_entry_id: Joi.number().integer().positive().required().messages({
+        'number.base': 'word_entry_id必须是数字',
+        'any.required': 'word_entry_id是必填项',
+      }),
+      status: Joi.string().valid('pending', 'review', 'mastered').optional(),
+      is_favorite: Joi.boolean().optional(),
+      wrong_delta: Joi.number().integer().min(-5).max(5).optional(),
+    }),
+  },
+
+  // 单词练习：保存位置
+  wordPracticeSaveState: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId必须是数字',
+        'any.required': 'bookId是必填项',
+      }),
+    }),
+    body: Joi.object({
+      last_word_entry_id: Joi.number().integer().positive().allow(null).optional(),
+      last_word_order_index: Joi.number().integer().min(1).allow(null).optional(),
+    }),
+  },
+
   updateFileParseStatus: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({
