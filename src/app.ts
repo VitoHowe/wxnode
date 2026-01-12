@@ -23,6 +23,7 @@ import parseResultRoutes from '@/routes/parseResults';
 import userProgressRoutes from '@/routes/userProgress';
 import chapterRoutes from '@/routes/chapters';
 import wordBookRoutes from '@/routes/wordBooks';
+import wordPracticeRoutes from '@/routes/wordPractice';
 
 // 加载环境变量
 // 优先加载 .env 文件（Docker 环境），如果不存在则尝试加载 .process 文件（本地开发环境）
@@ -110,6 +111,7 @@ app.use('/api/user-progress', userProgressRoutes);
 app.use('/api/question-banks', chapterRoutes);
 app.use('/api/chapters', chapterRoutes);
 app.use('/api/word-books', wordBookRoutes);
+app.use('/api/word-practice', wordPracticeRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);
