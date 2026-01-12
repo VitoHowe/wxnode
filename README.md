@@ -35,6 +35,15 @@
 | `/api/word-books/upload` | POST | 上传 JSON 单词书文件，解析后落库 |
 | `/api/word-books` | GET | 分页获取全部单词书及总数量 |
 | `/api/word-books/{id}/words` | GET | 根据单词书 ID 获取词条（默认一次性返回整本单词） |
+| `/api/word-books/{id}/favorites` | GET | 获取该单词书的收藏列表 |
+| `/api/word-books/{id}/favorites` | POST | 将指定 entryId 加入收藏 |
+| `/api/word-books/{id}/favorites` | DELETE | 移除指定 entryId 的收藏记录 |
+| `/api/word-books/{id}/wrong-words` | GET | 获取该单词书的错题列表 |
+| `/api/word-books/{id}/wrong-words` | POST | 记录指定 entryId 的错题 |
+| `/api/word-books/{id}/wrong-words` | DELETE | 删除错题记录 |
+| `/api/word-books/{id}/progress` | GET | 获取该单词书的学习进度 |
+| `/api/word-books/{id}/progress` | POST | 保存/更新学习进度 |
+| `/api/word-books/{id}/progress` | DELETE | 重置学习进度 |
 
 > 上传接口需要 `file` 字段，可选 `name` / `description` / `language`；词条查询接口无需分页参数，服务端会直接返回整本单词列表，方便前端本地练习。
 

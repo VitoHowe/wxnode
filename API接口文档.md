@@ -1578,3 +1578,49 @@ try {
 - 所有需要认证的接口都需要在请求头中包含有效的Bearer Token
 - Token有效期为2小时，过期后需要使用refresh token刷新
 - 生产环境建议启用HTTPS加密传输
+## 鍗曡瘝涔︾粌涔?鎵╁睍鍔熻兘
+
+### 鏀惰棌鍗曡瘝
+- `GET /api/word-books/{id}/favorites`
+  - 鑾峰彇褰撳墠鍗曡瘝涔︾殑鎵€鏈夋敹钘忓崟璇嶅拰鏃堕棿鐐规竻鍐?;
+- `POST /api/word-books/{id}/favorites`
+  - Request Body
+    ```json
+    {
+      "entryId": 12
+    }
+    ```
+  - 鎻愬彇 entryId 骞惰〃绀烘敹钘忓垪琛ㄤ腑鐨勯噸澶嶆甯革紝鎴愬姛鍚庨噸杞借繑鍥炵敤鎴疯鐪嬬殑鏀惰棌鍒楄〃銆?
+- `DELETE /api/word-books/{id}/favorites`
+  - Request Body 涓庡悓涓婁竴鏍峰紡锛岄€氳繃 entryId 鎸囧畾瑕佽繛绂荤殑鍗曡瘝銆?
+
+### 閿欓鍒楄〃
+- `GET /api/word-books/{id}/wrong-words` 鑾峰彇宸插姞鍏ラ敊棰樿〃鍗曠煡璇㈠拰 wrong_times 璁℃暟銆?
+- `POST /api/word-books/{id}/wrong-words` Request Body 鍚屼竴锛岀敤浜庣Н鏋缁撴灉鍗曡瘝鍑洪敊銆?
+- `DELETE /api/word-books/{id}/wrong-words` Request Body 鎸囩ず entryId 鐢ㄦ埛鍙负閲嶇疆閿欓銆?
+
+### 瀛︿範杩涘害
+- `GET /api/word-books/{id}/progress`
+  ```json
+  {
+    "book": { "id": 1, "name": "CET-4" },
+    "progress": {
+      "book_id": 1,
+      "total_words": 200,
+      "completed_count": 40,
+      "current_index": 40,
+      "current_entry_id": 88,
+      "progress_percentage": 20,
+      "notes": "keep going",
+      "current_entry": {
+        "id": 88,
+        "word": "inspire",
+        "translation": "鍚戠郴"
+      }
+    }
+  }
+  ```
+- `POST /api/word-books/{id}/progress`
+  - Body Parameters: `completedCount`/`currentIndex`/`currentEntryId`/`totalWords`/`notes` 锛屽彲鍗曚釜鎴栧涓湪涓€娆℃洿鏂伴噸灏忔椂鍙戣捣
+- `DELETE /api/word-books/{id}/progress`
+  - 閲嶇疆鍚庤繑鍥炲崟璇嶆椂杩涘害涓篺ull锛岃幏鍙栫被鍨嬫洿鎹㈠簲鐢ㄦ帴鍙ｇ殑鐩稿叧鍊?。

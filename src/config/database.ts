@@ -269,6 +269,51 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    // 单词书收藏表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS word_book_favorites (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        book_id INT NOT NULL,
+        entry_id INT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_word_book_favorite (book_id, entry_id),
+        INDEX idx_word_book_fav_book (book_id),
+        FOREIGN KEY (book_id) REFERENCES word_books(id) ON DELETE CASCADE,
+        FOREIGN KEY (entry_id) REFERENCES word_book_entries(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 单词书错题表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS word_book_wrong_entries (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        book_id INT NOT NULL,
+        entry_id INT NOT NULL,
+        wrong_times INT DEFAULT 1,
+        last_wrong_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_word_book_wrong (book_id, entry_id),
+        INDEX idx_word_book_wrong_book (book_id),
+        FOREIGN KEY (book_id) REFERENCES word_books(id) ON DELETE CASCADE,
+        FOREIGN KEY (entry_id) REFERENCES word_book_entries(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 单词书进度表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS word_book_progress (
+        book_id INT PRIMARY KEY,
+        total_words INT DEFAULT 0,
+        completed_count INT DEFAULT 0,
+        current_index INT DEFAULT 0,
+        current_entry_id INT NULL,
+        progress_percentage DECIMAL(5,2) DEFAULT 0,
+        notes VARCHAR(255),
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (book_id) REFERENCES word_books(id) ON DELETE CASCADE,
+        FOREIGN KEY (current_entry_id) REFERENCES word_book_entries(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 插入默认角色数据
     await connection.execute(`
       INSERT IGNORE INTO roles (id, name, permissions, description) VALUES

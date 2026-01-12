@@ -1,0 +1,21 @@
+﻿{
+  "question": "新增收藏/错题/进度接口是否需要用户上下文？",
+  "analysis": {
+    "currentMiddleware": "wordBookRoutes.ts 顶部调用 router.use(authenticateToken)，说明所有单词书接口要求登录，属于受控管理端功能。",
+    "controllerUsage": "目前只有 upload 接口会把 req.user.userId 作为 created_by 写入数据库（wordBookController.uploadWordBook），其他查询 API 并不依赖 userId。",
+    "implication": "即便业务只与 book_id 关联，也应维持认证流程；但接口实现中不再写 userId，只用于鉴权/审计。"
+  },
+  "decision": "继续复用 authenticateToken，所有新增收藏/错题/进度路由保持登陆态，但实体表结构不包含 user_id 字段，仅在需要记录操作人（如上传）时读取 req.user。",
+  "evidence": [
+    {
+      "file": "src/routes/wordBooks.ts",
+      "lines": "24-33",
+      "note": "router.use(authenticateToken) 覆盖全部路由"
+    },
+    {
+      "file": "src/controllers/wordBookController.ts",
+      "lines": "10-34",
+      "note": "uploadWordBook 使用 req.user.userId 作为 created_by，其余方法不需要 userId"
+    }
+  ]
+}

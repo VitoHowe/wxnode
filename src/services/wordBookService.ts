@@ -57,6 +57,32 @@ export interface GetBookEntriesParams {
   bookId: number;
 }
 
+export interface ModifyWordEntryParams {
+  bookId: number;
+  entryId: number;
+}
+
+export interface UpdateWordBookProgressParams {
+  bookId: number;
+  completedCount?: number;
+  currentIndex?: number;
+  currentEntryId?: number | null;
+  totalWords?: number;
+  notes?: string | null;
+}
+
+export interface WordBookProgressRecord {
+  book_id: number;
+  total_words: number;
+  completed_count: number;
+  current_index: number;
+  current_entry_id?: number | null;
+  progress_percentage: number;
+  notes?: string | null;
+  updated_at: string;
+  current_entry?: WordBookEntry | null;
+}
+
 export interface NormalizedWordEntry {
   word: string;
   translation: string;
@@ -346,10 +372,7 @@ class WordBookService {
    * 获取指定单词书的单词列表
    */
   async getWordEntries(params: GetBookEntriesParams) {
-    const book = await this.getWordBookById(params.bookId);
-    if (!book) {
-      throw new Error('单词书不存在');
-    }
+    const book = await this.ensureWordBookExists(params.bookId);
 
     const entriesSql = `
       SELECT id, book_id, word, translation, phonetic, definition,
@@ -376,7 +399,186 @@ class WordBookService {
   }
 
   /**
-   * 根据 ID 获取单词书
+   * 获取单词书收藏列表
+   */
+  async listFavoriteWords(bookId: number) {
+    await this.ensureWordBookExists(bookId);
+    const sql = `
+      SELECT f.id, f.entry_id, f.created_at,
+             e.word, e.translation, e.phonetic, e.definition,
+             e.example_sentence, e.part_of_speech, e.tags
+      FROM word_book_favorites f
+      INNER JOIN word_book_entries e ON e.id = f.entry_id
+      WHERE f.book_id = ?
+      ORDER BY f.created_at DESC
+    `;
+    return query(sql, [bookId]);
+  }
+
+  /**
+   * 收藏单词
+   */
+  async addFavoriteWord(params: ModifyWordEntryParams) {
+    await this.ensureWordEntry(params.bookId, params.entryId);
+    await query(
+      `
+        INSERT IGNORE INTO word_book_favorites (book_id, entry_id, created_at)
+        VALUES (?, ?, NOW())
+      `,
+      [params.bookId, params.entryId]
+    );
+    return this.listFavoriteWords(params.bookId);
+  }
+
+  /**
+   * 移除收藏单词
+   */
+  async removeFavoriteWord(params: ModifyWordEntryParams) {
+    await this.ensureWordEntry(params.bookId, params.entryId);
+    await query('DELETE FROM word_book_favorites WHERE book_id = ? AND entry_id = ?', [
+      params.bookId,
+      params.entryId,
+    ]);
+    return this.listFavoriteWords(params.bookId);
+  }
+
+  /**
+   * 获取错题列表
+   */
+  async listWrongWords(bookId: number) {
+    await this.ensureWordBookExists(bookId);
+    const sql = `
+      SELECT w.id, w.entry_id, w.wrong_times, w.last_wrong_at,
+             e.word, e.translation, e.phonetic, e.definition,
+             e.example_sentence, e.part_of_speech, e.tags
+      FROM word_book_wrong_entries w
+      INNER JOIN word_book_entries e ON e.id = w.entry_id
+      WHERE w.book_id = ?
+      ORDER BY w.last_wrong_at DESC
+    `;
+    return query(sql, [bookId]);
+  }
+
+  /**
+   * 记录错题
+   */
+  async addWrongWord(params: ModifyWordEntryParams) {
+    await this.ensureWordEntry(params.bookId, params.entryId);
+    await query(
+      `
+        INSERT INTO word_book_wrong_entries (book_id, entry_id, wrong_times, last_wrong_at)
+        VALUES (?, ?, 1, NOW())
+        ON DUPLICATE KEY UPDATE wrong_times = wrong_times + 1, last_wrong_at = NOW()
+      `,
+      [params.bookId, params.entryId]
+    );
+    return this.listWrongWords(params.bookId);
+  }
+
+  /**
+   * 移除错题
+   */
+  async removeWrongWord(params: ModifyWordEntryParams) {
+    await this.ensureWordEntry(params.bookId, params.entryId);
+    await query('DELETE FROM word_book_wrong_entries WHERE book_id = ? AND entry_id = ?', [
+      params.bookId,
+      params.entryId,
+    ]);
+    return this.listWrongWords(params.bookId);
+  }
+
+  /**
+   * 查询单词书学习进度
+   */
+  async getWordBookProgress(bookId: number) {
+    const book = await this.ensureWordBookExists(bookId);
+    const progressSql = `
+      SELECT book_id, total_words, completed_count, current_index,
+             current_entry_id, progress_percentage, notes, updated_at
+      FROM word_book_progress
+      WHERE book_id = ?
+      LIMIT 1
+    `;
+    const rows = (await query(progressSql, [bookId])) as WordBookProgressRecord[];
+    const progress = rows[0];
+
+    if (!progress) {
+      return { book, progress: null };
+    }
+
+    let currentEntry: WordBookEntry | null = null;
+    if (progress.current_entry_id) {
+      currentEntry = await this.findWordEntry(bookId, progress.current_entry_id);
+    }
+
+    return {
+      book,
+      progress: {
+        ...progress,
+        current_entry: currentEntry,
+      },
+    };
+  }
+
+  /**
+   * 保存单词书学习进度
+   */
+  async upsertWordBookProgress(params: UpdateWordBookProgressParams) {
+    const book = await this.ensureWordBookExists(params.bookId);
+    const totalWords = Math.max(0, params.totalWords ?? book.total_words ?? 0);
+    const completedCount = Math.min(Math.max(params.completedCount ?? 0, 0), totalWords);
+    const currentIndex = Math.min(Math.max(params.currentIndex ?? 0, 0), totalWords);
+    let currentEntryId: number | null = params.currentEntryId ?? null;
+
+    if (currentEntryId) {
+      await this.ensureWordEntry(params.bookId, currentEntryId);
+    }
+
+    const progressPercentage =
+      totalWords > 0
+        ? Math.min(100, Number(((completedCount / totalWords) * 100).toFixed(2)))
+        : 0;
+
+    await query(
+      `
+        INSERT INTO word_book_progress (
+          book_id, total_words, completed_count, current_index, current_entry_id,
+          progress_percentage, notes, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        ON DUPLICATE KEY UPDATE
+          total_words = VALUES(total_words),
+          completed_count = VALUES(completed_count),
+          current_index = VALUES(current_index),
+          current_entry_id = VALUES(current_entry_id),
+          progress_percentage = VALUES(progress_percentage),
+          notes = VALUES(notes),
+          updated_at = NOW()
+      `,
+      [
+        params.bookId,
+        totalWords,
+        completedCount,
+        currentIndex,
+        currentEntryId,
+        progressPercentage,
+        params.notes ?? null,
+      ]
+    );
+
+    return this.getWordBookProgress(params.bookId);
+  }
+
+  /**
+   * 重置单词书进度
+   */
+  async resetWordBookProgress(bookId: number) {
+    await this.ensureWordBookExists(bookId);
+    await query('DELETE FROM word_book_progress WHERE book_id = ?', [bookId]);
+    return this.getWordBookProgress(bookId);
+  }
+
+  /**
+   * 鏍规嵁 ID 鑾峰彇鍗曡瘝涔?
    */
   async getWordBookById(id: number): Promise<WordBook | null> {
     const sql = `
@@ -390,6 +592,41 @@ class WordBookService {
     const result = await query(sql, [id]);
     return result[0] || null;
   }
+
+  private async ensureWordBookExists(bookId: number): Promise<WordBook> {
+    const book = await this.getWordBookById(bookId);
+    if (!book) {
+      throw new Error('单词书不存在');
+    }
+    return book;
+  }
+
+  private async findWordEntry(bookId: number, entryId: number): Promise<WordBookEntry | null> {
+    const sql = `
+      SELECT id, book_id, word, translation, phonetic, definition,
+             example_sentence, part_of_speech, tags, extra, order_index, created_at
+      FROM word_book_entries
+      WHERE id = ? AND book_id = ?
+      LIMIT 1
+    `;
+    const rows = await query(sql, [entryId, bookId]);
+    if (!rows[0]) {
+      return null;
+    }
+    return {
+      ...rows[0],
+      extra: safeParseJSON(rows[0].extra),
+    };
+  }
+
+  private async ensureWordEntry(bookId: number, entryId: number): Promise<WordBookEntry> {
+    const entry = await this.findWordEntry(bookId, entryId);
+    if (!entry) {
+      throw new Error('单词条目不存在');
+    }
+    return entry;
+  }
+
 }
 
 export const wordBookService = new WordBookService();

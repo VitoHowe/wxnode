@@ -1,32 +1,32 @@
 ﻿[
   {
-    "question": "单词书上传数据应如何落库？需要单独的 word_books + word_entries 表还是直接存文件？",
+    "question": "收藏/错题/进度功能的业务含义？是针对整本词书的聚合统计还是需要记录具体词条 ID 列表？",
     "status": "open",
     "priority": "high",
-    "notes": "影响 API 设计和查询效率，倾向建表供快速检索。"
+    "notes": "直接影响数据库 schema 以及 API 入参/出参结构。"
   },
   {
-    "question": "上传接口输入格式：是 multipart JSON 文件还是直接 JSON body？是否需要沿用 multer？",
+    "question": "既然只能与单词本 ID 关联，接口是否仍需要用户上下文？如何在无用户情况下触发收藏或错题操作？",
     "status": "open",
     "priority": "high",
-    "notes": "影响路由和 swagger 设计，需要与现有上传逻辑保持一致。"
+    "notes": "关系到鉴权策略与路由设计，需确认是否纯管理端操作。"
   },
   {
-    "question": "单词条目的字段规范？样例只有 english/chinese，但未来可能需要音标/例句，是否需要 JSON 扩展字段？",
+    "question": "收藏/错题/进度的接口形态：需要增删改查多条 REST 路由还是通过一个 summary 端点返回？",
     "status": "open",
     "priority": "medium",
-    "notes": "决定数据库 schema 的可扩展性。"
+    "notes": "决定 app.ts 下 wordBookRoutes 的扩展方式及 swagger 描述。"
   },
   {
-    "question": "接口是否需要鉴权？是否沿用 authenticateToken？",
+    "question": "数据库中是否已有可复用表或字段来保存这些统计？若无，应该如何设计新表并与 word_books 建立关系？",
     "status": "open",
     "priority": "medium",
-    "notes": "涉及权限控制与 middleware 复用。"
+    "notes": "涉及 createTables 自动迁移，需确认是否添加新的统计表。"
   },
   {
-    "question": "是否需要分页/搜索指定单词书中的单词？用户需求目前只说获取整本，需确认返回策略。",
+    "question": "新增功能的测试策略：需要 Jest 单测还是同时添加接口测试？",
     "status": "open",
     "priority": "low",
-    "notes": "关系到 API 的响应体大小与性能。"
+    "notes": "决定 tests 目录新增哪些文件以及验证命令。"
   }
 ]

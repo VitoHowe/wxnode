@@ -43,3 +43,42 @@
 | 2025-11-11T16:59:52 | shell:Set-Content update_validation_query.py | 创建脚本更新 wordBookEntriesQuery 校验 |
 | 2025-11-11T16:59:52 | shell:python update_validation_query.py | 执行脚本 |
 | 2025-11-11T16:59:52 | shell:Remove-Item update_validation_query.py | 删除脚本 |
+| 2025-11-16T23:32:51 | shell:powershell encoding | 设置控制台输入/输出 UTF-8 并 chcp 65001 |
+| 2025-11-16T23:32:51 | tool:sequential-thinking | 初次思考：确认任务目标与上下文收集计划 |
+| 2025-11-16T23:32:51 | shell:Get-ChildItem | 列出仓库根目录了解结构 |
+| 2025-11-16T23:32:52 | shell:rg wordBook | 检索 wordBook 相关文件定位实现位置 |
+| 2025-11-16T23:32:52 | shell:Get-Content src/app.ts | 阅读应用入口确认 wordBook 路由挂载情况 |
+| 2025-11-16T23:32:52 | shell:Get-Content src/routes/wordBooks.ts | 查看 wordBook 路由定义与 swagger 注释 |
+| 2025-11-16T23:32:52 | shell:Get-Content src/controllers/wordBookController.ts | 检查控制器逻辑与 ResponseUtil 使用 |
+| 2025-11-16T23:32:52 | shell:Get-Content src/services/wordBookService.ts | 通读服务层实现与数据库交互 |
+| 2025-11-16T23:32:52 | shell:Get-Content tests/wordBookService.test.ts | 查看已有 Jest 测试覆盖范围 |
+| 2025-11-16T23:32:52 | shell:Get-ChildItem .codex | 检查历史上下文文件 |
+| 2025-11-16T23:32:52 | shell:Get-Content .codex/context-scan.json | 读取旧的结构化扫描结果 |
+| 2025-11-16T23:32:52 | shell:Set-Content .codex/context-scan.json | 生成新的 wordBook 聚焦 context-scan |
+| 2025-11-16T23:32:53 | tool:sequential-thinking | 再次思考以识别关键疑问 |
+| 2025-11-16T23:32:53 | shell:Set-Content .codex/context-questions.json | 写入最新疑问与优先级列表 |
+| 2025-11-16T23:33:36 | shell:rg 单词书 | 搜索“单词书”关键词，确认文档和实现引用位置 |
+| 2025-11-16T23:33:36 | shell:Get-Content src/config/database.ts segment | 提取 word_books / word_book_entries 建表片段 |
+| 2025-11-16T23:33:36 | shell:Set-Content .codex/context-question-3.json | 记录“只与单词本ID关联”深挖结论 |
+| 2025-11-16T23:33:36 | shell:Set-Content .codex/context-question-4.json | 记录鉴权/用户上下文深挖结论 |
+| 2025-11-16T23:33:54 | shell:Set-Content .codex/context-sufficiency.md | 更新充分性检查，确认信息已足够 |
+| 2025-11-16T23:34:29 | note | shrimp-task-manager 不在可用工具列表，继续使用 sequential-thinking + update_plan 规划 |
+| 2025-11-16T23:34:39 | plan:update_plan | 建立 4 步实施计划 |
+| 2025-11-16T23:36:05 | apply_patch | 在 src/config/database.ts 新增 word_book_favorites/word_book_wrong_entries/word_book_progress 建表语句 |
+| 2025-11-16T23:42:45 | shell:python rewrite_wordbook_service | 重写 wordBookService.ts 尾部以加入收藏/错题/进度逻辑 |
+| 2025-11-16T23:43:06 | shell:Remove-Item tmp | 删除临时 snippet 文件 |
+| 2025-11-16T23:43:23 | plan:update_plan | 标记步骤1完成，步骤2进行中 |
+| 2025-11-16T23:44:33 | shell:python update_validation | 在 validation.ts 中新增 wordBookEntryAction/Progress 校验 |
+| 2025-11-16T23:45:00 | shell:Replace validation | 将 wordBookProgressParams 重命名为 wordBookIdParams |
+| 2025-11-16T23:46:12 | shell:python update_wordBookController | 为单词书控制器新增收藏/错题/进度方法 |
+| 2025-11-16T23:46:38 | apply_patch | wordBooks.ts 增加收藏/错题/进度路由及 Swagger |
+| 2025-11-16T23:47:45 | apply_patch | wordBookService.test.ts 新增收藏/错题/进度测试 |
+| 2025-11-16T23:49:17 | shell:python update_readme_table | README 增加收藏/错题/进度接口说明 |
+| 2025-11-16T23:50:01 | shell:Add-Content API接口文档.md | 文档新增收藏/错题/进度段落 |
+| 2025-11-16T23:50:14 | plan:update_plan | 步骤2完成，开始文档/路由更新 |
+| 2025-11-16T23:50:32 | plan:update_plan | 路由/文档更新完成，准备补充测试 |
+| 2025-11-16T23:50:51 | shell:npm test -- wordBookService | 运行 Jest 覆盖 wordBookService |
+| 2025-11-16T23:51:30 | shell:Add-Content .codex/testing.md | 记录 11-12 Jest 结果 |
+| 2025-11-16T23:51:37 | shell:Add-Content verification.md | 更新自检说明（收藏/错题/进度） |
+| 2025-11-16T23:51:53 | plan:update_plan | 所有计划步骤完成 |
+| 2025-11-16T23:52:38 | shell:Set-Content .codex/review-report.md | 生成 11-12 审查报告 |

@@ -1,4 +1,4 @@
-﻿- [x] 我能定义清晰的接口契约：上传接口采用 multipart/form-data(JSON 文件 + 书名等元数据)，列表/按ID查询返回结构化 JSON 数据。
-- [x] 我理解关键技术选型：沿用 Express + multer + mysql2，新建 word_books/word_book_entries 表并批量插入，原因是方便查询与扩展。
-- [x] 我识别了主要风险：大文件解析、重复上传、JSON 结构差异、批量写入性能；计划通过验证字段、事务/批量插入、唯一约束应对。
-- [x] 我知道如何验证实现：使用 Jest 编写 service 层单测、通过 supertest/请求模拟测试上传与列表接口，运行 npm test，并在 `.codex/testing.md` 记录。 
+﻿- [x] 我能定义清晰的接口契约：wordBookRoutes 下需要新增 `/api/word-books/:id/favorites`, `/wrong-words`, `/progress` 等路由，均以 book_id 路径参数操作收藏列表、错题集与进度摘要，输入输出结构已在需求中限定仅依赖单词本 ID。
+- [x] 我理解关键技术选型：沿用 Express + mysql2 + Joi + ResponseUtil，新增三张围绕 book_id 的表（或表+视图）在 src/config/database.ts 中自动创建，并由 service 层封装 SQL。
+- [x] 我识别了主要风险：收藏/错题/进度可能涉及批量词条数据，需限制 payload 和唯一键；仅以 book_id 关联意味着需要自建复合主键保证幂等，以及考虑并发更新导致的统计不一致。
+- [x] 我知道如何验证实现：为新服务编写 Jest 单测覆盖收藏/错题/进度 CRUD 逻辑，必要时补充路由层 supertest；所有执行结果记录到 `.codex/testing.md` 与 `verification.md`。

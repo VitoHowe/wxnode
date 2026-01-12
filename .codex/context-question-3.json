@@ -1,0 +1,25 @@
+﻿{
+  "question": "收藏/错题/进度功能的数据应如何绑定？",
+  "analysis": {
+    "requirement": "用户需求明确写出“要求只和单词本 id 进行关联”，意味着所有新数据结构都必须以 word_books.id 为唯一外键。",
+    "existingSchema": "word_books 与 word_book_entries 表均只依赖 book_id（见 src/config/database.ts 中 CREATE TABLE 语句），没有 user_id 或其它关联字段，这与需求保持一致。",
+    "routeDesign": "src/routes/wordBooks.ts 目前的 REST 路径均采用 /api/word-books/:id/... 形式，扩展收藏/错题/进度也可沿用该模式以 book_id 作为唯一参数。"
+  },
+  "decision": "新增的收藏/错题/进度表及 API 都以 book_id 作为唯一外键，不记录 user_id 或其他实体；如需记录具体词条明细，可以通过 book_id + word 标识具体项。",
+  "evidence": [
+    {
+      "file": "src/config/database.ts",
+      "lines": "232-268",
+      "note": "word_books / word_book_entries 建表语句展示只有 book_id 关联"
+    },
+    {
+      "file": "src/routes/wordBooks.ts",
+      "lines": "92-154",
+      "note": "所有现有接口均以单词书 ID 为 path param"
+    },
+    {
+      "file": "user request",
+      "note": "“只和单词本 id 进行关联” 为强制约束"
+    }
+  ]
+}

@@ -68,7 +68,7 @@ export const validateRequest = (schema: {
 
 // 常用验证模式
 export const validationSchemas = {
-  // 统一登录验证（支持微信和普通用户）
+  // 统一登录验证(支持微信和普通用户)
   login: {
     body: Joi.object({
       // 微信登录参数
@@ -102,7 +102,7 @@ export const validationSchemas = {
     }),
   },
 
-  // 微信登录验证（保持向后兼容）
+  // 微信登录验证(保持向后兼容)
   wechatLogin: {
     body: Joi.object({
       code: Joi.string().required().messages({
@@ -210,7 +210,7 @@ export const validationSchemas = {
     }),
   },
 
-  // 文件列表查询验证（包含解析状态筛选）
+  // 文件列表查询验证(包含解析状态筛选)
   fileListQuery: {
     query: Joi.object({
       page: Joi.number().integer().min(1).default(1).messages({
@@ -471,7 +471,7 @@ export const validationSchemas = {
     }),
   },
 
-  // 设置用户角色验证（仅超级管理员）
+  // 设置用户角色验证(仅超级管理员)
   setUserRole: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({
@@ -522,6 +522,54 @@ export const validationSchemas = {
       }),
     }),
     query: Joi.object().optional(),
+  },
+
+
+  // 单词操作通用校验
+  wordBookEntryAction: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必填项',
+      }),
+    }),
+    body: Joi.object({
+      entryId: Joi.number().integer().positive().required().messages({
+        'number.base': 'entryId 必须是数字',
+        'any.required': 'entryId 是必填项',
+      }),
+    }),
+  },
+
+  // 单词书进度写入
+  wordBookProgressUpsert: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必填项',
+      }),
+    }),
+    body: Joi.object({
+      completedCount: Joi.number().integer().min(0).optional(),
+      currentIndex: Joi.number().integer().min(0).optional(),
+      currentEntryId: Joi.number().integer().positive().allow(null).optional(),
+      totalWords: Joi.number().integer().min(0).optional(),
+      notes: Joi.string().max(255).allow('', null).optional(),
+    })
+      .min(1)
+      .messages({
+        'object.min': '请至少提供一个需要更新的字段',
+      }),
+  },
+
+  // 单词书全局ID校验
+  wordBookIdParams: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'ID必须是数字',
+        'any.required': 'ID是必填项',
+      }),
+    }),
   },
 
   updateFileParseStatus: {

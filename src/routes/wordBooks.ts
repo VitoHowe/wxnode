@@ -152,4 +152,93 @@ router.get(
   wordBookController.getWordBookWords
 );
 
+/**
+ * @swagger
+ * /api/word-books/{id}/favorites:
+ *   get:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 鑾峰彇鍗曡瘝涔︽敹钘忓垪琛?
+ *     security:
+ *       - bearerAuth: []
+ *   post:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 灏嗘寚瀹氭潯鐩坊鍔犱互鏀惰棌鍒楄〃
+ *   delete:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 浠庤璇曞簭鍒楄幏鍙栫敤鎴峰凡鏀惰棌鐨勬枃鏈櫥褰曞悗鍒犻櫎
+ */
+router.get(
+  '/:id/favorites',
+  validateRequest(validationSchemas.wordBookIdParams),
+  wordBookController.listFavoriteWords
+);
+router.post(
+  '/:id/favorites',
+  validateRequest(validationSchemas.wordBookEntryAction),
+  wordBookController.addFavoriteWord
+);
+router.delete(
+  '/:id/favorites',
+  validateRequest(validationSchemas.wordBookEntryAction),
+  wordBookController.removeFavoriteWord
+);
+
+/**
+ * @swagger
+ * /api/word-books/{id}/wrong-words:
+ *   get:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 鑾峰彇鍗曡瘝涔︾殑閿欓鍒楄〃
+ *   post:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 璁板綍鎸囧畾鍗曡瘝鍑洪敊
+ *   delete:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 灏嗗姞鍏ョ殑閿欓鍒嗗娍鍘绘帀
+ */
+router.get(
+  '/:id/wrong-words',
+  validateRequest(validationSchemas.wordBookIdParams),
+  wordBookController.listWrongWords
+);
+router.post(
+  '/:id/wrong-words',
+  validateRequest(validationSchemas.wordBookEntryAction),
+  wordBookController.addWrongWord
+);
+router.delete(
+  '/:id/wrong-words',
+  validateRequest(validationSchemas.wordBookEntryAction),
+  wordBookController.removeWrongWord
+);
+
+/**
+ * @swagger
+ * /api/word-books/{id}/progress:
+ *   get:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 鑾峰彇鍗曡瘝涔﹀涔犺繘搴?
+ *   post:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 淇濆瓨鎴栧垱寤烘涔犺繘搴?
+ *   delete:
+ *     tags: [鍗曡瘝涔︾鐞哴
+ *     summary: 閲嶇疆鍗曡瘝涔﹀涔犺繘搴?
+ */
+router.get(
+  '/:id/progress',
+  validateRequest(validationSchemas.wordBookIdParams),
+  wordBookController.getWordBookProgress
+);
+router.post(
+  '/:id/progress',
+  validateRequest(validationSchemas.wordBookProgressUpsert),
+  wordBookController.saveWordBookProgress
+);
+router.delete(
+  '/:id/progress',
+  validateRequest(validationSchemas.wordBookIdParams),
+  wordBookController.resetWordBookProgress
+);
+
 export default router;
