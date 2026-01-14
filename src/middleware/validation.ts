@@ -572,6 +572,101 @@ export const validationSchemas = {
     }),
   },
 
+  // ???????????
+  wordPracticeBookParam: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId?????',
+        'number.integer': 'bookId?????',
+        'number.positive': 'bookId?????',
+        'any.required': 'bookId????',
+      }),
+    }),
+  },
+
+  // ???????????????
+  wordPracticeWordsQuery: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId?????',
+        'number.integer': 'bookId?????',
+        'number.positive': 'bookId?????',
+        'any.required': 'bookId????',
+      }),
+    }),
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1).messages({
+        'number.base': 'page?????',
+        'number.integer': 'page?????',
+        'number.min': 'page????0',
+      }),
+      limit: Joi.number().integer().min(1).max(200).default(50).messages({
+        'number.base': 'limit?????',
+        'number.integer': 'limit?????',
+        'number.min': 'limit????0',
+        'number.max': 'limit????200',
+      }),
+    }),
+  },
+
+  // ?????????
+  wordPracticeUpdateProgress: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId?????',
+        'number.integer': 'bookId?????',
+        'number.positive': 'bookId?????',
+        'any.required': 'bookId????',
+      }),
+    }),
+    body: Joi.object({
+      word_entry_id: Joi.number().integer().positive().required().messages({
+        'number.base': 'word_entry_id?????',
+        'number.integer': 'word_entry_id?????',
+        'number.positive': 'word_entry_id?????',
+        'any.required': 'word_entry_id????',
+      }),
+      status: Joi.string().valid('pending', 'review', 'mastered').optional().messages({
+        'any.only': 'status???pending, review, mastered',
+      }),
+      is_favorite: Joi.boolean().optional().messages({
+        'boolean.base': 'is_favorite??????',
+      }),
+      wrong_delta: Joi.number().integer().optional().messages({
+        'number.base': 'wrong_delta?????',
+        'number.integer': 'wrong_delta?????',
+      }),
+    }),
+  },
+
+  // ?????????
+  wordPracticeSaveState: {
+    params: Joi.object({
+      bookId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bookId?????',
+        'number.integer': 'bookId?????',
+        'number.positive': 'bookId?????',
+        'any.required': 'bookId????',
+      }),
+    }),
+    body: Joi.object({
+      last_word_entry_id: Joi.number().integer().positive().allow(null).optional().messages({
+        'number.base': 'last_word_entry_id?????',
+        'number.integer': 'last_word_entry_id?????',
+        'number.positive': 'last_word_entry_id?????',
+      }),
+      last_word_order_index: Joi.number().integer().min(0).allow(null).optional().messages({
+        'number.base': 'last_word_order_index?????',
+        'number.integer': 'last_word_order_index?????',
+        'number.min': 'last_word_order_index????0',
+      }),
+    })
+      .min(1)
+      .messages({
+        'object.min': '??????????????',
+      }),
+  },
+
   updateFileParseStatus: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({

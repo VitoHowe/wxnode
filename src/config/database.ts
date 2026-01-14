@@ -533,13 +533,27 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
       logger.info('已添加password字段');
     }
 
-    // 修改openid字段为可空（如果还不是）
-    await connection.execute(`
-      ALTER TABLE users 
-      MODIFY COLUMN openid VARCHAR(100) UNIQUE NULL COMMENT '微信openid，普通用户为空'
+    // Ensure openid is nullable without re-adding indexes on every startup
+    const openidNullableCheck = await connection.execute(`
+      SELECT IS_NULLABLE
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = '${dbConfig.database}'
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'openid'
     `);
 
-    logger.info('用户表迁移完成');
+    const openidIsNullable = (openidNullableCheck[0] as any[]).some(
+      (row) => row.IS_NULLABLE === 'YES'
+    );
+
+    if (!openidIsNullable) {
+      await connection.execute(`
+        ALTER TABLE users 
+        MODIFY COLUMN openid VARCHAR(100) NULL COMMENT 'WeChat openid, NULL for standard users'
+      `);
+
+      logger.info('Updated users.openid to allow NULL');
+    }
   } catch (error) {
     logger.error('用户表迁移失败:', error);
     // 不抛出错误，让应用继续运行

@@ -33,7 +33,7 @@ const upload = multer({
       cb(null, true);
       return;
     }
-    cb(new Error('仅支持 JSON 格式的单词书文件'));
+    cb(new Error('Only JSON word book files are supported.'));
   },
 });
 
@@ -43,9 +43,9 @@ router.use(authenticateToken);
  * @swagger
  * /api/word-books/upload:
  *   post:
- *     tags: [单词书管理]
- *     summary: 上传单词书 JSON 文件
- *     description: 通过上传 JSON 文件将整本单词书写入数据库，服务器会自动解析条目并建立索引。
+ *     tags: [WordBooks]
+ *     summary: Upload a word book JSON file
+ *     description: Upload a JSON file to import a word book into the system.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -60,24 +60,25 @@ router.use(authenticateToken);
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: 包含单词数组的 JSON 文件
+ *                 description: JSON file containing word entries
  *               name:
  *                 type: string
- *                 description: 单词书名称（可选，不填则使用文件名）
+ *                 description: Word book name (optional, defaults to file name)
  *               description:
  *                 type: string
- *                 description: 单词书简介
+ *                 description: Word book description
  *               language:
  *                 type: string
- *                 description: 语言标识，默认 zh-CN
+ *                 description: Language code (default zh-CN)
  *     responses:
  *       200:
- *         description: 上传成功
+ *         description: Upload succeeded
  *       400:
- *         description: 参数或文件格式错误
+ *         description: Invalid params or file format
  *       401:
- *         description: 未登录
+ *         description: Unauthorized
  */
+
 router.post(
   '/upload',
   upload.single('file'),
@@ -89,9 +90,9 @@ router.post(
  * @swagger
  * /api/word-books:
  *   get:
- *     tags: [单词书管理]
- *     summary: 获取单词书列表
- *     description: 返回当前系统内所有可用的单词书，用于选择练习素材。
+ *     tags: [WordBooks]
+ *     summary: List word books
+ *     description: Return available word books for selection.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -109,27 +110,28 @@ router.post(
  *         name: keyword
  *         schema:
  *           type: string
- *           description: 按名称/描述模糊搜索
+ *           description: Filter by name or description
  *       - in: query
  *         name: language
  *         schema:
  *           type: string
- *           description: 按语言过滤
+ *           description: Filter by language code
  *     responses:
  *       200:
- *         description: 获取成功
+ *         description: Success
  *       401:
- *         description: 未登录
+ *         description: Unauthorized
  */
+
 router.get('/', validateRequest(validationSchemas.wordBookList), wordBookController.listWordBooks);
 
 /**
  * @swagger
  * /api/word-books/{id}/words:
  *   get:
- *     tags: [单词书管理]
- *     summary: 获取指定单词书的单词
- *     description: 根据单词书 ID 返回其中的单词条目，支持分页或一次性取全量数据（all=1）。
+ *     tags: [WordBooks]
+ *     summary: Get words from a word book
+ *     description: Return word entries for the specified book. Use all=1 to return all.
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -140,12 +142,13 @@ router.get('/', validateRequest(validationSchemas.wordBookList), wordBookControl
  *           type: integer
  *     responses:
  *       200:
- *         description: 获取成功
+ *         description: Success
  *       401:
- *         description: 未登录
+ *         description: Unauthorized
  *       404:
- *         description: 单词书不存在
+ *         description: Word book not found
  */
+
 router.get(
   '/:id/words',
   validateRequest(validationSchemas.wordBookEntriesQuery),
@@ -156,17 +159,22 @@ router.get(
  * @swagger
  * /api/word-books/{id}/favorites:
  *   get:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 鑾峰彇鍗曡瘝涔︽敹钘忓垪琛?
+ *     tags: [WordBooks]
+ *     summary: List favorite words for a word book
  *     security:
  *       - bearerAuth: []
  *   post:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 灏嗘寚瀹氭潯鐩坊鍔犱互鏀惰棌鍒楄〃
+ *     tags: [WordBooks]
+ *     summary: Add a word to favorites
+ *     security:
+ *       - bearerAuth: []
  *   delete:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 浠庤璇曞簭鍒楄幏鍙栫敤鎴峰凡鏀惰棌鐨勬枃鏈櫥褰曞悗鍒犻櫎
+ *     tags: [WordBooks]
+ *     summary: Remove a word from favorites
+ *     security:
+ *       - bearerAuth: []
  */
+
 router.get(
   '/:id/favorites',
   validateRequest(validationSchemas.wordBookIdParams),
@@ -187,15 +195,22 @@ router.delete(
  * @swagger
  * /api/word-books/{id}/wrong-words:
  *   get:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 鑾峰彇鍗曡瘝涔︾殑閿欓鍒楄〃
+ *     tags: [WordBooks]
+ *     summary: List wrong words for a word book
+ *     security:
+ *       - bearerAuth: []
  *   post:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 璁板綍鎸囧畾鍗曡瘝鍑洪敊
+ *     tags: [WordBooks]
+ *     summary: Add a wrong word
+ *     security:
+ *       - bearerAuth: []
  *   delete:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 灏嗗姞鍏ョ殑閿欓鍒嗗娍鍘绘帀
+ *     tags: [WordBooks]
+ *     summary: Remove a wrong word
+ *     security:
+ *       - bearerAuth: []
  */
+
 router.get(
   '/:id/wrong-words',
   validateRequest(validationSchemas.wordBookIdParams),
@@ -216,15 +231,22 @@ router.delete(
  * @swagger
  * /api/word-books/{id}/progress:
  *   get:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 鑾峰彇鍗曡瘝涔﹀涔犺繘搴?
+ *     tags: [WordBooks]
+ *     summary: Get progress for a word book
+ *     security:
+ *       - bearerAuth: []
  *   post:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 淇濆瓨鎴栧垱寤烘涔犺繘搴?
+ *     tags: [WordBooks]
+ *     summary: Save progress for a word book
+ *     security:
+ *       - bearerAuth: []
  *   delete:
- *     tags: [鍗曡瘝涔︾鐞哴
- *     summary: 閲嶇疆鍗曡瘝涔﹀涔犺繘搴?
+ *     tags: [WordBooks]
+ *     summary: Reset progress for a word book
+ *     security:
+ *       - bearerAuth: []
  */
+
 router.get(
   '/:id/progress',
   validateRequest(validationSchemas.wordBookIdParams),
