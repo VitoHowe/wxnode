@@ -115,6 +115,24 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_refresh_tokens (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        token_hash VARCHAR(64) NOT NULL,
+        issued_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        revoked_at TIMESTAMP NULL,
+        replaced_by VARCHAR(64) NULL,
+        user_agent VARCHAR(255) NULL,
+        ip_address VARCHAR(45) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_user_id (user_id),
+        UNIQUE KEY uk_token_hash (token_hash),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 迁移逻辑：添加新字段（如果不存在）
     await migrateUserTable(connection);
 
@@ -150,21 +168,92 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     // 添加解析JSON文件路径字段
     await addParsedJsonPathField(connection);
 
+    // 创建题库章节表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS question_chapters (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        bank_id INT NOT NULL COMMENT '关联的题库ID',
+        chapter_name VARCHAR(200) NOT NULL COMMENT '章节名称',
+        chapter_order INT NOT NULL COMMENT '章节顺序',
+        question_count INT NOT NULL DEFAULT 0 COMMENT '该章节题目数量',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_bank_chapter (bank_id, chapter_name),
+        INDEX idx_bank_order (bank_id, chapter_order),
+        CONSTRAINT fk_chapters_bank_id FOREIGN KEY (bank_id)
+          REFERENCES question_banks(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库章节表'
+    `);
+
+    // 创建题目表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS questions (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        bank_id INT NOT NULL COMMENT '关联的题库ID',
+        chapter_id INT NOT NULL COMMENT '关联的章节ID',
+        question_no VARCHAR(50) DEFAULT NULL COMMENT '题号',
+        type ENUM('single', 'multiple', 'judge', 'fill', 'essay') NOT NULL COMMENT '题型',
+        content TEXT NOT NULL COMMENT '题目内容',
+        options JSON DEFAULT NULL COMMENT '选项（JSON数组）',
+        answer TEXT NOT NULL COMMENT '答案',
+        explanation TEXT DEFAULT NULL COMMENT '解析',
+        difficulty INT DEFAULT 1 COMMENT '难度：1-简单 2-中等 3-困难',
+        tags JSON DEFAULT NULL COMMENT '标签（JSON数组）',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        INDEX idx_bank (bank_id),
+        INDEX idx_chapter (chapter_id),
+        INDEX idx_type (type),
+        INDEX idx_difficulty (difficulty),
+        INDEX idx_created_at (created_at),
+        CONSTRAINT fk_questions_bank_id_v3 FOREIGN KEY (bank_id)
+          REFERENCES question_banks(id) ON DELETE CASCADE,
+        CONSTRAINT fk_questions_chapter_id_v3 FOREIGN KEY (chapter_id)
+          REFERENCES question_chapters(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表'
+    `);
+
+    // 创建解析结果表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS parse_results (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        bank_id INT NOT NULL COMMENT '关联的题库ID',
+        questions JSON NOT NULL COMMENT '解析得到的题目数组(JSON格式)',
+        total_questions INT NOT NULL DEFAULT 0 COMMENT '题目总数',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        INDEX idx_bank_id (bank_id),
+        INDEX idx_created_at (created_at),
+        CONSTRAINT fk_parse_results_bank_id FOREIGN KEY (bank_id)
+          REFERENCES question_banks(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='解析结果表'
+    `);
+
     // 创建用户学习进度表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS user_study_progress (
         id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
         user_id INT NOT NULL COMMENT '用户ID',
         bank_id INT NOT NULL COMMENT '题库ID',
+        practice_mode ENUM('chapter', 'full') NOT NULL DEFAULT 'chapter' COMMENT '练习模式：chapter=章节练习, full=整卷练习',
+        chapter_id INT NULL COMMENT '章节ID',
+        current_chapter_id INT NULL COMMENT '当前所在章节ID（整卷练习时使用）',
+        parse_result_id INT NULL COMMENT '解析结果ID',
         current_question_index INT NOT NULL DEFAULT 0 COMMENT '当前题目索引(从0开始)',
+        current_question_number INT NULL COMMENT '当前题号(从1开始)',
         completed_count INT NOT NULL DEFAULT 0 COMMENT '已完成题目数量',
         total_questions INT NOT NULL DEFAULT 0 COMMENT '总题目数量',
         last_study_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后学习时间',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-        UNIQUE KEY uk_user_bank (user_id, bank_id) COMMENT '用户和题库的唯一组合',
+        UNIQUE KEY uk_user_bank_mode_chapter (user_id, bank_id, practice_mode, chapter_id) COMMENT '用户题库章节练习唯一组合',
         INDEX idx_user_id (user_id),
         INDEX idx_bank_id (bank_id),
+        INDEX idx_practice_mode (practice_mode),
+        INDEX idx_chapter_id (chapter_id),
+        INDEX idx_current_chapter (current_chapter_id),
         INDEX idx_last_study_time (last_study_time),
         CONSTRAINT fk_progress_user FOREIGN KEY (user_id) 
           REFERENCES users(id) ON DELETE CASCADE,
@@ -172,6 +261,8 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
           REFERENCES question_banks(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户学习进度表'
     `);
+
+    await migrateUserStudyProgressTable(connection);
 
     // 创建解析日志表
     await connection.execute(`
@@ -266,6 +357,41 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         INDEX idx_word_entries_book (book_id),
         INDEX idx_word_entries_order (book_id, order_index),
         FOREIGN KEY (book_id) REFERENCES word_books(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 用户单词练习进度表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_word_progress (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        book_id INT NOT NULL,
+        word_entry_id INT NOT NULL,
+        status ENUM('pending','review','mastered') NOT NULL DEFAULT 'pending',
+        is_favorite TINYINT(1) NOT NULL DEFAULT 0,
+        wrong_count INT NOT NULL DEFAULT 0,
+        last_practice_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_word (user_id, word_entry_id),
+        KEY idx_user_book (user_id, book_id),
+        KEY idx_book_word (book_id, word_entry_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 用户单词书学习位置表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_word_book_state (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        book_id INT NOT NULL,
+        last_word_entry_id INT NULL,
+        last_word_order_index INT NULL,
+        last_practice_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_user_book (user_id, book_id),
+        KEY idx_user_book_state (user_id, book_id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -479,6 +605,126 @@ const addParsedJsonPathField = async (connection: mysql.PoolConnection): Promise
   } catch (error) {
     logger.error('添加parsed_json_path字段失败:', error);
     // 不抛出错误，让应用继续运行
+  }
+};
+
+const columnExists = async (
+  connection: mysql.PoolConnection,
+  tableName: string,
+  columnName: string
+): Promise<boolean> => {
+  const result = await connection.execute(
+    `
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = ?
+      AND COLUMN_NAME = ?
+    `,
+    [dbConfig.database, tableName, columnName]
+  );
+  return (result[0] as any[]).length > 0;
+};
+
+const indexExists = async (
+  connection: mysql.PoolConnection,
+  tableName: string,
+  indexName: string
+): Promise<boolean> => {
+  const result = await connection.execute(
+    `
+      SELECT INDEX_NAME
+      FROM INFORMATION_SCHEMA.STATISTICS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = ?
+      AND INDEX_NAME = ?
+    `,
+    [dbConfig.database, tableName, indexName]
+  );
+  return (result[0] as any[]).length > 0;
+};
+
+const dropIndexIfExists = async (
+  connection: mysql.PoolConnection,
+  tableName: string,
+  indexName: string
+): Promise<void> => {
+  if (await indexExists(connection, tableName, indexName)) {
+    await connection.execute(`ALTER TABLE ${tableName} DROP INDEX ${indexName}`);
+  }
+};
+
+/**
+ * 迁移用户学习进度表 - 兼容章节/整卷练习字段
+ */
+const migrateUserStudyProgressTable = async (
+  connection: mysql.PoolConnection
+): Promise<void> => {
+  try {
+    if (!(await columnExists(connection, 'user_study_progress', 'practice_mode'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD COLUMN practice_mode ENUM('chapter', 'full') NOT NULL DEFAULT 'chapter'
+        COMMENT '练习模式：chapter=章节练习, full=整卷练习'
+        AFTER bank_id
+      `);
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD INDEX idx_practice_mode (practice_mode)
+      `);
+    }
+
+    if (!(await columnExists(connection, 'user_study_progress', 'chapter_id'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD COLUMN chapter_id INT NULL COMMENT '章节ID'
+        AFTER practice_mode
+      `);
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD INDEX idx_chapter_id (chapter_id)
+      `);
+    }
+
+    if (!(await columnExists(connection, 'user_study_progress', 'current_chapter_id'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD COLUMN current_chapter_id INT NULL COMMENT '当前所在章节ID（整卷练习时使用）'
+        AFTER chapter_id
+      `);
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD INDEX idx_current_chapter (current_chapter_id)
+      `);
+    }
+
+    if (!(await columnExists(connection, 'user_study_progress', 'parse_result_id'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD COLUMN parse_result_id INT NULL COMMENT '解析结果ID'
+        AFTER current_chapter_id
+      `);
+    }
+
+    if (!(await columnExists(connection, 'user_study_progress', 'current_question_number'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD COLUMN current_question_number INT NULL COMMENT '当前题号(从1开始)'
+        AFTER current_question_index
+      `);
+    }
+
+    await dropIndexIfExists(connection, 'user_study_progress', 'uk_user_bank');
+    await dropIndexIfExists(connection, 'user_study_progress', 'uk_user_bank_chapter');
+
+    if (!(await indexExists(connection, 'user_study_progress', 'uk_user_bank_mode_chapter'))) {
+      await connection.execute(`
+        ALTER TABLE user_study_progress
+        ADD UNIQUE KEY uk_user_bank_mode_chapter (user_id, bank_id, practice_mode, chapter_id)
+      `);
+    }
+  } catch (error) {
+    logger.error('用户学习进度表迁移失败:', error);
   }
 };
 

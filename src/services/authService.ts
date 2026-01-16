@@ -1,8 +1,11 @@
+import crypto from 'crypto';
+import mysql from 'mysql2/promise';
 import { WechatUtil } from '@/utils/wechat';
 import { JWTUtil } from '@/utils/jwt';
 import { userService } from '@/services/userService';
 import { logger } from '@/utils/logger';
 import { AuthenticationError, WechatAPIError } from '@/middleware/errorHandler';
+import { getPool, query } from '@/config/database';
 
 // 微信登录参数接口
 interface WechatLoginParams {
@@ -30,6 +33,51 @@ interface LoginResult {
 }
 
 class AuthService {
+  private buildTokenHash(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private async insertRefreshToken(
+    connection: mysql.PoolConnection,
+    userId: number,
+    refreshToken: string,
+    userAgent?: string,
+    ipAddress?: string
+  ): Promise<string> {
+    const tokenHash = this.buildTokenHash(refreshToken);
+    const expiresAt = JWTUtil.getTokenExpiration(refreshToken);
+    if (!expiresAt) {
+      throw new Error('刷新令牌过期时间解析失败');
+    }
+
+    await connection.execute(
+      `
+        INSERT INTO user_refresh_tokens (
+          user_id, token_hash, issued_at, expires_at,
+          user_agent, ip_address, created_at
+        ) VALUES (?, ?, NOW(), ?, ?, ?, NOW())
+      `,
+      [userId, tokenHash, expiresAt, userAgent || null, ipAddress || null]
+    );
+
+    return tokenHash;
+  }
+
+  private async revokeRefreshToken(
+    connection: mysql.PoolConnection,
+    tokenId: number,
+    replacedByHash: string | null
+  ): Promise<void> {
+    await connection.execute(
+      `
+        UPDATE user_refresh_tokens
+        SET revoked_at = NOW(), replaced_by = ?
+        WHERE id = ?
+      `,
+      [replacedByHash, tokenId]
+    );
+  }
+
   /**
    * 微信小程序登录
    */
@@ -90,7 +138,12 @@ class AuthService {
         openid: user.openid,
       });
 
-      // JWT是完全无状态的，不需要任何缓存
+      const loginConnection = await getPool().getConnection();
+      try {
+        await this.insertRefreshToken(loginConnection, user.id, tokenPair.refreshToken);
+      } finally {
+        loginConnection.release();
+      }
 
       // 6. 返回登录结果（JWT完全无状态）
       return {
@@ -165,6 +218,13 @@ class AuthService {
       accessTokenLength: tokenPair.accessToken?.length || 0
     });
 
+    const loginConnection = await getPool().getConnection();
+    try {
+      await this.insertRefreshToken(loginConnection, user.id, tokenPair.refreshToken);
+    } finally {
+      loginConnection.release();
+    }
+
     const result = {
       accessToken: tokenPair.accessToken,
       refreshToken: tokenPair.refreshToken,
@@ -203,8 +263,16 @@ class AuthService {
   /**
    * 刷新访问令牌（简化版，JWT无状态）
    */
-  async refreshToken(userId: number, userIdentifier?: string): Promise<Omit<LoginResult, 'user'>> {
+  async refreshToken(
+    userId: number,
+    refreshToken: string | undefined,
+    userIdentifier?: string
+  ): Promise<Omit<LoginResult, 'user'>> {
     try {
+      if (!refreshToken) {
+        throw new AuthenticationError('刷新令牌缺失');
+      }
+
       // 1. 验证用户是否存在
       const user = await userService.getUserById(userId);
       if (!user) {
@@ -219,20 +287,63 @@ class AuthService {
         }
       }
 
-      // 3. 生成新的令牌对（无状态，不存储到数据库）
-      const tokenPair = JWTUtil.generateTokenPair({
-        userId: user.id,
-        openid: user.openid,
-        username: user.username,
-      });
+      const tokenHash = this.buildTokenHash(refreshToken);
+      const connection = await getPool().getConnection();
 
-      logger.info(`令牌刷新成功: 用户${userId}`);
+      try {
+        await connection.beginTransaction();
 
-      return {
-        accessToken: tokenPair.accessToken,
-        refreshToken: tokenPair.refreshToken,
-        expiresIn: tokenPair.expiresIn,
-      };
+        const [rows] = await connection.execute<any[]>(
+          `
+            SELECT id, user_id, revoked_at, expires_at
+            FROM user_refresh_tokens
+            WHERE token_hash = ?
+            LIMIT 1
+            FOR UPDATE
+          `,
+          [tokenHash]
+        );
+
+        if (!rows || rows.length === 0) {
+          throw new AuthenticationError('刷新令牌已失效');
+        }
+
+        const record = rows[0];
+        if (record.user_id !== userId) {
+          throw new AuthenticationError('用户信息不匹配');
+        }
+
+        if (record.revoked_at) {
+          throw new AuthenticationError('刷新令牌已被撤销');
+        }
+
+        if (record.expires_at && new Date(record.expires_at).getTime() <= Date.now()) {
+          throw new AuthenticationError('刷新令牌已过期');
+        }
+
+        const tokenPair = JWTUtil.generateTokenPair({
+          userId: user.id,
+          openid: user.openid,
+          username: user.username,
+        });
+
+        const newTokenHash = await this.insertRefreshToken(connection, user.id, tokenPair.refreshToken);
+        await this.revokeRefreshToken(connection, record.id, newTokenHash);
+
+        await connection.commit();
+        logger.info(`令牌刷新成功: 用户${userId}`);
+
+        return {
+          accessToken: tokenPair.accessToken,
+          refreshToken: tokenPair.refreshToken,
+          expiresIn: tokenPair.expiresIn,
+        };
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
     } catch (error) {
       logger.error('刷新令牌失败:', error);
       throw error;
@@ -244,8 +355,14 @@ class AuthService {
    */
   async logout(userId: number): Promise<void> {
     try {
-      // JWT完全无状态，登出只需要前端丢弃token即可
-      // 这里可以记录登出日志，但不需要任何服务端状态清理
+      await query(
+        `
+          UPDATE user_refresh_tokens
+          SET revoked_at = NOW()
+          WHERE user_id = ? AND revoked_at IS NULL
+        `,
+        [userId]
+      );
       logger.info(`用户登出: ${userId}`);
     } catch (error) {
       logger.error('用户登出失败:', error);

@@ -345,7 +345,9 @@ class WordBookService {
     const total = totalResult[0]?.total || 0;
 
     const listSql = `
-      SELECT id, name, description, language, total_words, created_at, updated_at
+      SELECT id, name, description, language, total_words,
+             source_filename, stored_path, source_size,
+             created_at, updated_at
       FROM word_books
       ${whereClause}
       ORDER BY created_at DESC

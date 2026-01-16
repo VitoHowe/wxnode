@@ -373,6 +373,30 @@ class UserProgressService {
   }
 
   /**
+   * 重置章节学习进度
+   */
+  async resetChapterProgress(userId: number, bankId: number, chapterId: number): Promise<void> {
+    try {
+      const existing = await this.getChapterProgress(userId, bankId, chapterId);
+
+      if (!existing) {
+        throw new NotFoundError('章节学习进度不存在');
+      }
+
+      await query(
+        `DELETE FROM user_study_progress
+         WHERE user_id = ? AND bank_id = ? AND practice_mode = 'chapter' AND chapter_id = ?`,
+        [userId, bankId, chapterId]
+      );
+
+      logger.info(`重置章节学习进度成功: UserID=${userId}, BankID=${bankId}, ChapterID=${chapterId}`);
+    } catch (error) {
+      logger.error('重置章节学习进度失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取用户最近学习的题库
    */
   async getRecentStudyBanks(userId: number, limit: number = 5): Promise<StudyProgress[]> {

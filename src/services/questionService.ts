@@ -174,7 +174,7 @@ class QuestionService {
           qb.created_at,
           qb.updated_at,
           u.nickname as creator_name,
-          (SELECT COUNT(*) FROM questions WHERE bank_id = qb.id) as question_count,
+          COALESCE(qb.total_questions, 0) as question_count,
           ${
             userId
               ? `(SELECT COUNT(*) FROM question_chapters WHERE bank_id = qb.id) as total_chapters,
@@ -296,6 +296,7 @@ class QuestionService {
 
       return {
         ...bank,
+        question_count: bank.total_questions ?? 0,
         statistics: stats,
       };
     } catch (error) {

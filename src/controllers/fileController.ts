@@ -27,7 +27,14 @@ class FileController {
       userId: req.user.userId,
     });
 
-    return ResponseUtil.success(res, result, '文件上传成功');
+    return ResponseUtil.success(
+      res,
+      {
+        ...result,
+        parsed_questions: result.total_questions ?? 0,
+      },
+      '文件上传成功'
+    );
   });
 
   /**

@@ -161,11 +161,10 @@ export const validationSchemas = {
   // 刷新令牌验证
   refreshToken: {
     body: Joi.object({
-      refreshToken: Joi.string().required().messages({
+      refreshToken: Joi.string().optional().messages({
         'string.empty': '刷新令牌不能为空',
-        'any.required': '刷新令牌是必需的',
       }),
-    }),
+    }).default({}),
   },
 
   // 用户信息更新验证

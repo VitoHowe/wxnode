@@ -135,7 +135,11 @@ class AuthController {
       return ResponseUtil.authError(res, '无效的刷新令牌');
     }
 
-    const result = await authService.refreshToken(req.user.userId, req.user.openid || req.user.username || undefined);
+    const result = await authService.refreshToken(
+      req.user.userId,
+      req.refreshToken,
+      req.user.openid || req.user.username || undefined
+    );
 
     return ResponseUtil.success(res, result, '令牌刷新成功');
   });
@@ -154,8 +158,7 @@ class AuthController {
       return ResponseUtil.notFoundError(res, '用户不存在');
     }
 
-    // 为了与登录接口返回结构保持一致，这里将用户数据包裹为 { user }
-    return ResponseUtil.success(res, { user }, '获取成功');
+    return ResponseUtil.success(res, user, '获取成功');
   });
 
   /**

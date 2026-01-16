@@ -184,10 +184,16 @@ export async function saveChapterProgress(req: Request, res: Response, next: Nex
     
     const { 
       practice_mode = 'chapter',
+      current_chapter_id,
       current_question_number,
       completed_count,
       total_questions 
     } = req.body;
+
+    const resolvedChapterId =
+      practice_mode === 'full'
+        ? (current_chapter_id !== undefined ? Number(current_chapter_id) : Number(chapterId))
+        : Number(chapterId);
     
     // 验证必填参数
     if (current_question_number === undefined || total_questions === undefined) {
@@ -199,13 +205,32 @@ export async function saveChapterProgress(req: Request, res: Response, next: Nex
     
     const progress = await userProgressService.saveProgress(userId, Number(bankId), {
       practice_mode,
-      chapter_id: Number(chapterId),
+      chapter_id: resolvedChapterId,
       current_question_number,
       completed_count,
       total_questions
     });
     
     return ResponseUtil.success(res, progress, '保存章节学习进度成功');
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/**
+ * 删除章节学习进度
+ */
+export async function deleteChapterProgress(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { bankId, chapterId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return ResponseUtil.authError(res, '用户未登录');
+    }
+
+    await userProgressService.resetChapterProgress(userId, Number(bankId), Number(chapterId));
+    return ResponseUtil.success(res, null, '章节学习进度已重置');
   } catch (error) {
     return next(error);
   }

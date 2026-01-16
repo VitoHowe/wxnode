@@ -8,6 +8,7 @@ declare global {
   namespace Express {
     interface Request {
       user?: TokenPayload;
+      refreshToken?: string;
     }
   }
 }
@@ -111,7 +112,9 @@ export const requireSuperAdmin = requirePermissions(['super_admin']);
  * 刷新令牌中间件
  */
 export const authenticateRefreshToken = (req: Request, res: Response, next: NextFunction): void => {
-  const token = extractTokenFromRequest(req);
+  const tokenFromHeader = extractTokenFromRequest(req);
+  const tokenFromBody = req.body && typeof req.body.refreshToken === 'string' ? req.body.refreshToken : null;
+  const token = tokenFromHeader || tokenFromBody;
   
   if (!token) {
     res.status(401).json({
@@ -134,6 +137,7 @@ export const authenticateRefreshToken = (req: Request, res: Response, next: Next
   }
 
   req.user = decoded;
+  req.refreshToken = token;
   next();
 };
 

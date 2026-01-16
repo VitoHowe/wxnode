@@ -1,6 +1,6 @@
 # 🎯 微信小程序题库管理系统
 
-> 一个现代化的题库管理后端API系统，支持微信小程序登录和传统用户注册，提供完整的题库管理功能。
+> 一个现代化的题库管理后端 API 系统，支持微信小程序登录与账号密码登录，覆盖题库、章节、学习进度与单词书查询。
 
 [![Node.js](https://img.shields.io/badge/Node.js-16+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
@@ -11,8 +11,8 @@
 
 ### 🔐 双重认证系统
 - **微信小程序登录**: 一键授权，无缝接入
-- **普通用户注册**: 传统用户名密码认证
-- **混合用户管理**: 同一系统支持两种用户类型
+- **账号密码登录**: 适合后台或运营账号
+- **统一登录入口**: 同一路由兼容两种方式
 
 ### 🚀 技术亮点
 - **统一响应格式**: 所有API采用标准化响应结构
@@ -23,29 +23,19 @@
 
 ### 📚 核心功能
 - 🎓 **题库管理**: 支持多种题型（单选、多选、判断、填空、简答）
+- 📘 **章节与题目查询**: 章节列表与题目拉取
+- 🧭 **学习进度**: 章节/整卷进度写入与重置
 - 📁 **文件上传**: 支持题库文件上传和解析
-- 👥 **用户管理**: 角色权限控制，用户状态管理
-- 🔄 **数据同步**: 实时数据更新和状态同步
-- 📘 **单词书练习**: 上传 JSON 单词书、列出可用词书并拉取词条练习数据
+- 📗 **单词书查询**: 单词书列表与词条拉取
 
 ## 📘 单词书练习 API
 
 | 端点 | 方法 | 功能 |
 | ---- | ---- | ---- |
-| `/api/word-books/upload` | POST | 上传 JSON 单词书文件，解析后落库 |
 | `/api/word-books` | GET | 分页获取全部单词书及总数量 |
 | `/api/word-books/{id}/words` | GET | 根据单词书 ID 获取词条（默认一次性返回整本单词） |
-| `/api/word-books/{id}/favorites` | GET | 获取该单词书的收藏列表 |
-| `/api/word-books/{id}/favorites` | POST | 将指定 entryId 加入收藏 |
-| `/api/word-books/{id}/favorites` | DELETE | 移除指定 entryId 的收藏记录 |
-| `/api/word-books/{id}/wrong-words` | GET | 获取该单词书的错题列表 |
-| `/api/word-books/{id}/wrong-words` | POST | 记录指定 entryId 的错题 |
-| `/api/word-books/{id}/wrong-words` | DELETE | 删除错题记录 |
-| `/api/word-books/{id}/progress` | GET | 获取该单词书的学习进度 |
-| `/api/word-books/{id}/progress` | POST | 保存/更新学习进度 |
-| `/api/word-books/{id}/progress` | DELETE | 重置学习进度 |
 
-> 上传接口需要 `file` 字段，可选 `name` / `description` / `language`；词条查询接口无需分页参数，服务端会直接返回整本单词列表，方便前端本地练习。
+> 词条查询接口无需分页参数，服务端会直接返回整本单词列表，方便前端本地练习。
 
 
 ## 🏗️ 技术架构
@@ -60,7 +50,8 @@
 │   ├── 用户认证服务 (微信+普通)
 │   ├── 题库管理服务
 │   ├── 文件处理服务
-│   └── 权限控制服务
+│   ├── 学习进度服务
+│   └── 单词书服务
 ├── 💾 数据层
 │   ├── MySQL数据库
 │   ├── 自动迁移系统
@@ -126,7 +117,7 @@ pnpm run dev
 
 #### 5. 验证安装
 ```bash
-curl http://localhost:3000/health
+curl http://localhost:3001/health
 ```
 
 ## 📖 API 文档
@@ -147,21 +138,31 @@ curl http://localhost:3000/health
 
 #### 🔐 认证接口
 - `POST /api/auth/login` - 统一登录（支持微信+普通）
-- `POST /api/auth/register` - 普通用户注册
+- `POST /api/auth/refresh` - 刷新 Token
 - `GET /api/auth/profile` - 获取用户信息
-- `POST /api/auth/refresh` - 刷新Token
-
-#### 👥 用户管理
-- `GET /api/users` - 用户列表
-- `GET /api/users/:id` - 用户详情
-- `PUT /api/users/:id` - 更新用户
-- `DELETE /api/users/:id` - 删除用户
+- `POST /api/auth/logout` - 登出
 
 #### 📚 题库管理
-- `GET /api/questions` - 题目列表
-- `POST /api/questions` - 创建题目
-- `GET /api/questions/:id` - 题目详情
-- `PUT /api/questions/:id` - 更新题目
+- `GET /api/questions/banks` - 题库列表
+- `GET /api/questions/banks/:id` - 题库详情
+
+#### 📖 章节与题目
+- `GET /api/question-banks/:bankId/chapters` - 章节列表
+- `GET /api/question-banks/:bankId/chapters/:chapterId/questions` - 章节题目
+
+#### 📗 单词书
+- `GET /api/word-books` - 单词书列表
+- `GET /api/word-books/:id/words` - 单词书词条
+
+#### 🧭 学习进度
+- `GET /api/user-progress/:bankId/chapters` - 章节进度
+- `GET /api/user-progress/:bankId/full` - 整卷进度
+- `POST /api/user-progress/:bankId/chapters/:chapterId` - 保存章节进度
+- `DELETE /api/user-progress/:bankId/chapters/:chapterId` - 重置章节进度
+- `DELETE /api/user-progress/:bankId` - 重置题库进度
+
+#### 📁 文件上传
+- `POST /api/files/upload` - 上传题库文件
 
 详细API文档请查看: [API接口文档.md](./API接口文档.md)
 
@@ -193,14 +194,9 @@ WECHAT_SECRET=your_secret
 
 ## 🧪 功能测试
 
-### 普通用户注册登录
+### 账号密码登录
 ```bash
-# 注册
-curl -X POST http://localhost:3001/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"Test123","nickname":"测试用户"}'
-
-# 登录
+# 需预置账号
 curl -X POST http://localhost:3001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"test","password":"Test123"}'

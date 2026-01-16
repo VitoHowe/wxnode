@@ -9,21 +9,18 @@ import path from 'path';
 
 import { errorHandler } from '@/middleware/errorHandler';
 import { notFoundHandler } from '@/middleware/notFoundHandler';
+import { apiRateLimiter } from '@/middleware/rateLimit';
 import { logger } from '@/utils/logger';
 import { connectDB } from '@/config/database';
 import { connectRedis } from '@/config/redis';
 
 // 路由导入
 import authRoutes from '@/routes/auth';
-import userRoutes from '@/routes/users';
 import fileRoutes from '@/routes/files';
 import questionRoutes from '@/routes/questions';
-import systemRoutes from '@/routes/system';
-import parseResultRoutes from '@/routes/parseResults';
 import userProgressRoutes from '@/routes/userProgress';
 import chapterRoutes from '@/routes/chapters';
 import wordBookRoutes from '@/routes/wordBooks';
-import wordPracticeRoutes from '@/routes/wordPractice';
 
 // 加载环境变量
 // 优先加载 .env 文件（Docker 环境），如果不存在则尝试加载 .process 文件（本地开发环境）
@@ -55,6 +52,9 @@ app.use('/api/question-banks/:bankId/images', (req, res, next) => {
   express.static(publicPath)(req, res, next);
 });
 
+// 全局 API 限流
+app.use('/api', apiRateLimiter);
+
 // Swagger API文档配置
 const swaggerOptions = {
   definition: {
@@ -85,7 +85,14 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.ts'], // API路由文件路径
+  apis: [
+    path.join(__dirname, 'routes/auth.ts'),
+    path.join(__dirname, 'routes/files.ts'),
+    path.join(__dirname, 'routes/questions.ts'),
+    path.join(__dirname, 'routes/chapters.ts'),
+    path.join(__dirname, 'routes/wordBooks.ts'),
+    path.join(__dirname, 'routes/userProgress.ts'),
+  ], // API路由文件路径
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -102,16 +109,11 @@ app.get('/health', (req, res) => {
 
 // API路由
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/questions', questionRoutes);
-app.use('/api/system', systemRoutes);
-app.use('/api/parse-results', parseResultRoutes);
 app.use('/api/user-progress', userProgressRoutes);
 app.use('/api/question-banks', chapterRoutes);
-app.use('/api/chapters', chapterRoutes);
 app.use('/api/word-books', wordBookRoutes);
-app.use('/api/word-practice', wordPracticeRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);
