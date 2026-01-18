@@ -810,14 +810,37 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
  * 执行SQL查询
  */
 export const query = async (sql: string, params?: any[]): Promise<any> => {
-  const connection = await getPool().getConnection();
+  const executeOnce = async (): Promise<any> => {
+    const connection = await getPool().getConnection();
+    try {
+      const [results] = await connection.execute(sql, params || []);
+      return results;
+    } finally {
+      connection.release();
+    }
+  };
+
   try {
-    const [results] = await connection.execute(sql, params || []);
-    return results;
-  } finally {
-    connection.release();
+    return await executeOnce();
+  } catch (error: any) {
+    const code = error?.code;
+    const shouldRetry =
+      code === 'PROTOCOL_CONNECTION_LOST' ||
+      code === 'ECONNRESET' ||
+      code === 'ECONNREFUSED' ||
+      code === 'ETIMEDOUT';
+
+    if (shouldRetry) {
+      logger.warn('数据库连接异常，重试一次', {
+        code,
+        message: error?.message
+      });
+      return await executeOnce();
+    }
+
+    throw error;
   }
-};
+};;
 
 /**
  * 关闭数据库连接
