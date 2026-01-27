@@ -136,12 +136,28 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     // 迁移逻辑：添加新字段（如果不存在）
     await migrateUserTable(connection);
 
+    // 创建科目表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(100) NOT NULL,
+        code VARCHAR(50) NULL,
+        status TINYINT DEFAULT 1 COMMENT '1:active 0:disabled',
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_subject_name (name),
+        UNIQUE KEY uk_subject_code (code)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // 创建题库表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS question_banks (
         id INT PRIMARY KEY AUTO_INCREMENT,
         name VARCHAR(200) NOT NULL,
         description TEXT,
+        subject_id INT NULL COMMENT '科目ID',
         file_type ENUM('question_bank', 'knowledge_base') DEFAULT 'question_bank' COMMENT '文件类型：题库/知识库',
         file_original_name VARCHAR(500),
         file_path VARCHAR(500),
@@ -157,22 +173,102 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         INDEX idx_status (parse_status),
         INDEX idx_created_by (created_by),
         INDEX idx_file_type (file_type),
+        INDEX idx_subject_id (subject_id),
         FOREIGN KEY (created_by) REFERENCES users(id),
+        CONSTRAINT fk_question_banks_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE SET NULL,
         FOREIGN KEY (provider_id) REFERENCES ai_providers(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
     // 迁移题库表 - 添加AI相关字段
     await migrateQuestionBanksTable(connection);
+    await migrateQuestionBanksSubject(connection);
     
     // 添加解析JSON文件路径字段
     await addParsedJsonPathField(connection);
+
+    // Markdown 文件与章节表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS markdown_files (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        name VARCHAR(200) NOT NULL,
+        description TEXT,
+        original_filename VARCHAR(500),
+        file_path VARCHAR(500) NOT NULL,
+        file_size BIGINT,
+        parse_status ENUM('pending', 'parsing', 'completed', 'failed') DEFAULT 'pending',
+        chapter_count INT DEFAULT 0,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_markdown_status (parse_status),
+        INDEX idx_markdown_created_by (created_by),
+        FOREIGN KEY (created_by) REFERENCES users(id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS markdown_chapters (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        file_id INT NOT NULL,
+        chapter_title VARCHAR(200) NOT NULL,
+        chapter_order INT NOT NULL,
+        file_path VARCHAR(500) NOT NULL,
+        file_size BIGINT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_markdown_file_chapter (file_id, chapter_order),
+        INDEX idx_markdown_file_id (file_id),
+        CONSTRAINT fk_markdown_chapters_file FOREIGN KEY (file_id)
+          REFERENCES markdown_files(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // 创建科目章节表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS subject_chapters (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        chapter_name VARCHAR(200) NOT NULL COMMENT '章节名称(基准)',
+        display_name VARCHAR(200) DEFAULT NULL COMMENT '展示名称',
+        chapter_order INT NOT NULL DEFAULT 0 COMMENT '章节顺序',
+        status TINYINT DEFAULT 1 COMMENT '1:active 0:disabled',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_subject_chapter (subject_id, chapter_name),
+        INDEX idx_subject_order (subject_id, chapter_order),
+        CONSTRAINT fk_subject_chapters_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='科目章节表'
+    `);
+
+    // 创建科目章节别名表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS subject_chapter_aliases (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        subject_chapter_id INT NOT NULL COMMENT '科目章节ID',
+        alias_name VARCHAR(200) NOT NULL COMMENT '章节别名',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_subject_chapter_alias (subject_id, alias_name),
+        INDEX idx_subject_alias_chapter (subject_id, subject_chapter_id),
+        CONSTRAINT fk_subject_chapter_alias_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_subject_chapter_alias_chapter FOREIGN KEY (subject_chapter_id)
+          REFERENCES subject_chapters(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='科目章节别名表'
+    `);
 
     // 创建题库章节表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS question_chapters (
         id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
         bank_id INT NOT NULL COMMENT '关联的题库ID',
+        subject_chapter_id INT NULL COMMENT '关联的科目章节ID',
         chapter_name VARCHAR(200) NOT NULL COMMENT '章节名称',
         chapter_order INT NOT NULL COMMENT '章节顺序',
         question_count INT NOT NULL DEFAULT 0 COMMENT '该章节题目数量',
@@ -181,10 +277,14 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         PRIMARY KEY (id),
         UNIQUE KEY uk_bank_chapter (bank_id, chapter_name),
         INDEX idx_bank_order (bank_id, chapter_order),
+        INDEX idx_subject_chapter (subject_chapter_id),
         CONSTRAINT fk_chapters_bank_id FOREIGN KEY (bank_id)
-          REFERENCES question_banks(id) ON DELETE CASCADE
+          REFERENCES question_banks(id) ON DELETE CASCADE,
+        CONSTRAINT fk_chapters_subject_chapter FOREIGN KEY (subject_chapter_id)
+          REFERENCES subject_chapters(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题库章节表'
     `);
+    await migrateQuestionChaptersTable(connection);
 
     // 创建题目表
     await connection.execute(`
@@ -200,6 +300,7 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         explanation TEXT DEFAULT NULL COMMENT '解析',
         difficulty INT DEFAULT 1 COMMENT '难度：1-简单 2-中等 3-困难',
         tags JSON DEFAULT NULL COMMENT '标签（JSON数组）',
+        random_key INT DEFAULT NULL COMMENT '随机键',
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
         PRIMARY KEY (id),
@@ -208,12 +309,14 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         INDEX idx_type (type),
         INDEX idx_difficulty (difficulty),
         INDEX idx_created_at (created_at),
+        INDEX idx_random_key (random_key),
         CONSTRAINT fk_questions_bank_id_v3 FOREIGN KEY (bank_id)
           REFERENCES question_banks(id) ON DELETE CASCADE,
         CONSTRAINT fk_questions_chapter_id_v3 FOREIGN KEY (chapter_id)
           REFERENCES question_chapters(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表'
     `);
+    await migrateQuestionsTable(connection);
 
     // 创建解析结果表
     await connection.execute(`
@@ -229,6 +332,93 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         CONSTRAINT fk_parse_results_bank_id FOREIGN KEY (bank_id)
           REFERENCES question_banks(id) ON DELETE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='解析结果表'
+    `);
+
+    // 创建真题试卷表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS real_exam_papers (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        name VARCHAR(200) NOT NULL COMMENT '试卷名称',
+        description TEXT,
+        total_questions INT DEFAULT 0,
+        status TINYINT DEFAULT 1 COMMENT '1:active 0:disabled',
+        created_by INT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        INDEX idx_subject_id (subject_id),
+        INDEX idx_status (status),
+        CONSTRAINT fk_real_exam_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_real_exam_creator FOREIGN KEY (created_by)
+          REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='真题试卷表'
+    `);
+
+    // 创建真题题目表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS real_exam_questions (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        paper_id INT NOT NULL COMMENT '试卷ID',
+        question_no INT NOT NULL COMMENT '题号',
+        type ENUM('single', 'multiple', 'judge', 'fill', 'essay') NOT NULL COMMENT '题型',
+        content TEXT NOT NULL COMMENT '题目内容',
+        options JSON DEFAULT NULL COMMENT '选项(JSON数组)',
+        answer TEXT NOT NULL COMMENT '答案',
+        explanation TEXT DEFAULT NULL COMMENT '解析',
+        difficulty INT DEFAULT 1 COMMENT '难度：1-简单 2-中等 3-困难',
+        tags JSON DEFAULT NULL COMMENT '标签(JSON数组)',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_paper_question (paper_id, question_no),
+        INDEX idx_paper (paper_id),
+        INDEX idx_type (type),
+        INDEX idx_difficulty (difficulty),
+        CONSTRAINT fk_real_exam_questions_paper FOREIGN KEY (paper_id)
+          REFERENCES real_exam_papers(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='真题题目表'
+    `);
+
+    // 创建真题答题统计表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS real_exam_attempts (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        user_id INT NOT NULL COMMENT '用户ID',
+        paper_id INT NOT NULL COMMENT '试卷ID',
+        total_questions INT NOT NULL DEFAULT 0,
+        correct_count INT NOT NULL DEFAULT 0,
+        wrong_count INT NOT NULL DEFAULT 0,
+        accuracy DECIMAL(5,2) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        INDEX idx_attempt_user (user_id),
+        INDEX idx_attempt_paper (paper_id),
+        CONSTRAINT fk_real_exam_attempt_user FOREIGN KEY (user_id)
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_real_exam_attempt_paper FOREIGN KEY (paper_id)
+          REFERENCES real_exam_papers(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='真题答题统计表'
+    `);
+
+    // 创建真题错题表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS real_exam_wrong_questions (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        attempt_id INT NOT NULL COMMENT '答题统计ID',
+        user_id INT NOT NULL COMMENT '用户ID',
+        paper_id INT NOT NULL COMMENT '试卷ID',
+        question_id INT NOT NULL COMMENT '题目ID',
+        selected_answer TEXT NULL COMMENT '用户答案',
+        correct_answer TEXT NULL COMMENT '正确答案',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        UNIQUE KEY uk_attempt_question (attempt_id, question_id),
+        INDEX idx_wrong_user (user_id),
+        INDEX idx_wrong_paper (paper_id),
+        CONSTRAINT fk_wrong_attempt FOREIGN KEY (attempt_id)
+          REFERENCES real_exam_attempts(id) ON DELETE CASCADE,
+        CONSTRAINT fk_wrong_question FOREIGN KEY (question_id)
+          REFERENCES real_exam_questions(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='真题错题表'
     `);
 
     // 创建用户学习进度表
@@ -263,6 +453,31 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     `);
 
     await migrateUserStudyProgressTable(connection);
+
+    // 创建专项训练进度表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS user_special_progress (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        user_id INT NOT NULL COMMENT '用户ID',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        subject_chapter_id INT NOT NULL COMMENT '科目章节ID',
+        current_question_number INT NULL COMMENT '当前题号(从1开始)',
+        completed_count INT NOT NULL DEFAULT 0 COMMENT '已完成题目数量',
+        total_questions INT NOT NULL DEFAULT 0 COMMENT '总题目数量',
+        last_study_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最后学习时间',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        UNIQUE KEY uk_user_subject_chapter (user_id, subject_id, subject_chapter_id),
+        INDEX idx_special_subject (subject_id),
+        INDEX idx_special_chapter (subject_chapter_id),
+        CONSTRAINT fk_special_user FOREIGN KEY (user_id)
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_special_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_special_chapter FOREIGN KEY (subject_chapter_id)
+          REFERENCES subject_chapters(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='专项训练进度表'
+    `);
 
     // 创建解析日志表
     await connection.execute(`
@@ -541,6 +756,94 @@ const migrateQuestionBanksTable = async (connection: mysql.PoolConnection): Prom
 };
 
 /**
+ * 迁移题库表 - 添加科目字段
+ */
+const migrateQuestionBanksSubject = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    if (!(await columnExists(connection, 'question_banks', 'subject_id'))) {
+      await connection.execute(`
+        ALTER TABLE question_banks
+        ADD COLUMN subject_id INT NULL COMMENT '科目ID'
+        AFTER description
+      `);
+    }
+
+    if (!(await indexExists(connection, 'question_banks', 'idx_subject_id'))) {
+      await connection.execute(`
+        ALTER TABLE question_banks
+        ADD INDEX idx_subject_id (subject_id)
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'question_banks', 'fk_question_banks_subject'))) {
+      await connection.execute(`
+        ALTER TABLE question_banks
+        ADD CONSTRAINT fk_question_banks_subject
+        FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE SET NULL
+      `);
+    }
+  } catch (error) {
+    logger.error('题库表科目字段迁移失败:', error);
+  }
+};
+
+/**
+ * 迁移题库章节表 - 添加科目章节映射
+ */
+const migrateQuestionChaptersTable = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    if (!(await columnExists(connection, 'question_chapters', 'subject_chapter_id'))) {
+      await connection.execute(`
+        ALTER TABLE question_chapters
+        ADD COLUMN subject_chapter_id INT NULL COMMENT '关联的科目章节ID'
+        AFTER bank_id
+      `);
+    }
+
+    if (!(await indexExists(connection, 'question_chapters', 'idx_subject_chapter'))) {
+      await connection.execute(`
+        ALTER TABLE question_chapters
+        ADD INDEX idx_subject_chapter (subject_chapter_id)
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'question_chapters', 'fk_chapters_subject_chapter'))) {
+      await connection.execute(`
+        ALTER TABLE question_chapters
+        ADD CONSTRAINT fk_chapters_subject_chapter
+        FOREIGN KEY (subject_chapter_id) REFERENCES subject_chapters(id) ON DELETE SET NULL
+      `);
+    }
+  } catch (error) {
+    logger.error('题库章节表迁移失败:', error);
+  }
+};
+
+/**
+ * 迁移题目表 - 添加随机键
+ */
+const migrateQuestionsTable = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    if (!(await columnExists(connection, 'questions', 'random_key'))) {
+      await connection.execute(`
+        ALTER TABLE questions
+        ADD COLUMN random_key INT NULL COMMENT '随机键'
+        AFTER tags
+      `);
+    }
+
+    if (!(await indexExists(connection, 'questions', 'idx_random_key'))) {
+      await connection.execute(`
+        ALTER TABLE questions
+        ADD INDEX idx_random_key (random_key)
+      `);
+    }
+  } catch (error) {
+    logger.error('题目表迁移失败:', error);
+  }
+};
+
+/**
  * 迁移供应商表 - 从model_configs迁移到ai_providers
  */
 const migrateProviderTable = async (connection: mysql.PoolConnection): Promise<void> => {
@@ -640,6 +943,24 @@ const indexExists = async (
       AND INDEX_NAME = ?
     `,
     [dbConfig.database, tableName, indexName]
+  );
+  return (result[0] as any[]).length > 0;
+};
+
+const foreignKeyExists = async (
+  connection: mysql.PoolConnection,
+  tableName: string,
+  constraintName: string
+): Promise<boolean> => {
+  const result = await connection.execute(
+    `
+      SELECT CONSTRAINT_NAME
+      FROM INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS
+      WHERE CONSTRAINT_SCHEMA = ?
+      AND TABLE_NAME = ?
+      AND CONSTRAINT_NAME = ?
+    `,
+    [dbConfig.database, tableName, constraintName]
   );
   return (result[0] as any[]).length > 0;
 };

@@ -29,6 +29,7 @@ interface QuestionBank {
   total_questions: number;
   created_by: number;
   created_at: Date;
+  subject_id?: number | null;
 }
 
 // 查询题目参数
@@ -46,6 +47,7 @@ interface GetQuestionBanksParams {
   page: number;
   limit: number;
   userId?: number; // 可选，用于查询学习进度
+  subjectId?: number;
 }
 
 // 更新题目参数
@@ -149,13 +151,23 @@ class QuestionService {
    * 获取题库列表
    */
   async getQuestionBanks(params: GetQuestionBanksParams): Promise<{ banks: QuestionBank[]; total: number; pagination: any }> {
-    const { page, limit, userId } = params;
+    const { page, limit, userId, subjectId } = params;
     const offset = (page - 1) * limit;
 
     try {
+      const whereConditions = ['qb.parse_status = ?'];
+      const whereParams: any[] = ['completed'];
+
+      if (subjectId) {
+        whereConditions.push('qb.subject_id = ?');
+        whereParams.push(subjectId);
+      }
+
+      const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+
       // 获取总数
-      const countSql = `SELECT COUNT(*) as total FROM question_banks WHERE parse_status = ?`;
-      const countResult = await query(countSql, ['completed']);
+      const countSql = `SELECT COUNT(*) as total FROM question_banks qb ${whereClause}`;
+      const countResult = await query(countSql, whereParams);
       const total = countResult[0].total;
 
       // 获取题库列表（为避免某些 MySQL 版本对 LIMIT/OFFSET 绑定参数报错，这里直接插入已验证的数值）
@@ -194,12 +206,13 @@ class QuestionService {
           }
         FROM question_banks qb 
         LEFT JOIN users u ON qb.created_by = u.id
-        WHERE qb.parse_status = ?
+        LEFT JOIN subjects s ON qb.subject_id = s.id
+        ${whereClause}
         ORDER BY qb.created_at DESC 
         LIMIT ${limit} OFFSET ${offset}
       `;
-      
-      const banks = await query(sql, ['completed']);
+
+      const banks = await query(sql, whereParams);
 
       // 格式化返回数据，添加进度信息
       const formattedBanks = banks.map((bank: any) => {
@@ -217,6 +230,8 @@ class QuestionService {
           updated_at: bank.updated_at,
           creator_name: bank.creator_name,
           question_count: bank.question_count,
+          subject_id: bank.subject_id ?? null,
+          subject_name: bank.subject_name ?? null,
         };
 
         // 如果查询了进度数据，则添加 study_progress 字段
@@ -379,11 +394,15 @@ class QuestionService {
   async createQuestions(bankId: number, questions: any[]): Promise<void> {
     try {
       const sql = `
-        INSERT INTO questions (bank_id, chapter_id, question_no, type, content, options, answer, explanation, difficulty, tags, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO questions (
+          bank_id, chapter_id, question_no, type, content,
+          options, answer, explanation, difficulty, tags, random_key, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
       for (const question of questions) {
+        const randomKey = Math.floor(Math.random() * 1000000);
         await query(sql, [
           bankId,
           question.chapter_id || null,
@@ -395,6 +414,7 @@ class QuestionService {
           question.explanation || null,
           question.difficulty || 1,
           JSON.stringify(question.tags || null),
+          randomKey,
         ]);
       }
 
@@ -411,7 +431,7 @@ class QuestionService {
   /**
    * 更新题库题目数量
    */
-  private async updateBankQuestionCount(bankId: number): Promise<void> {
+  async updateBankQuestionCount(bankId: number): Promise<void> {
     try {
       const countSql = 'SELECT COUNT(*) as count FROM questions WHERE bank_id = ?';
       const countResult = await query(countSql, [bankId]);
@@ -559,6 +579,202 @@ class QuestionService {
     }
   }
 
+  async getRandomQuestionsBySubject(subjectId: number, count: number): Promise<Question[]> {
+    try {
+      const safeCount = Number.isFinite(count) ? Math.floor(count) : 10;
+      const limitCount = Math.min(Math.max(safeCount, 1), 50);
+      const statsSql = `
+        SELECT 
+          MIN(q.random_key) as min_key,
+          MAX(q.random_key) as max_key,
+          COUNT(*) as total
+        FROM questions q
+        INNER JOIN question_banks qb ON q.bank_id = qb.id
+        WHERE qb.subject_id = ? AND q.random_key IS NOT NULL
+      `;
+      const statsResult = await query(statsSql, [subjectId]);
+      const stats = statsResult[0];
+
+      const total = Number(stats.total || 0);
+      if (total === 0) {
+        const idStatsSql = `
+          SELECT 
+            MIN(q.id) as min_id,
+            MAX(q.id) as max_id,
+            COUNT(*) as total
+          FROM questions q
+          INNER JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qb.subject_id = ?
+        `;
+        const idStatsResult = await query(idStatsSql, [subjectId]);
+        const idStats = idStatsResult[0];
+        const idTotal = Number(idStats.total || 0);
+        if (idTotal === 0) {
+          return [];
+        }
+
+        const minId = Number(idStats.min_id);
+        const maxId = Number(idStats.max_id);
+        const idSeed = Math.floor(Math.random() * (maxId - minId + 1)) + minId;
+        const desiredCount = Math.min(limitCount, idTotal);
+
+        const primarySql = `
+          SELECT q.*
+          FROM questions q
+          INNER JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qb.subject_id = ? AND q.id >= ?
+          ORDER BY q.id ASC
+          LIMIT ${desiredCount}
+        `;
+        const primary = await query(primarySql, [subjectId, idSeed]);
+        if (primary.length >= desiredCount) {
+          return primary;
+        }
+
+        const remaining = desiredCount - primary.length;
+        const secondarySql = `
+          SELECT q.*
+          FROM questions q
+          INNER JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qb.subject_id = ? AND q.id < ?
+          ORDER BY q.id ASC
+          LIMIT ${remaining}
+        `;
+        const secondary = await query(secondarySql, [subjectId, idSeed]);
+        return [...primary, ...secondary];
+      }
+
+      const minKey = Number(stats.min_key);
+      const maxKey = Number(stats.max_key);
+      const randomSeed = Math.floor(Math.random() * (maxKey - minKey + 1)) + minKey;
+
+      const primarySql = `
+        SELECT q.*
+        FROM questions q
+        INNER JOIN question_banks qb ON q.bank_id = qb.id
+        WHERE qb.subject_id = ? AND q.random_key >= ?
+        ORDER BY q.random_key ASC
+        LIMIT ${limitCount}
+      `;
+
+      const primary = await query(primarySql, [subjectId, randomSeed]);
+      if (primary.length >= limitCount) {
+        return primary;
+      }
+
+      const remaining = limitCount - primary.length;
+      const secondarySql = `
+        SELECT q.*
+        FROM questions q
+        INNER JOIN question_banks qb ON q.bank_id = qb.id
+        WHERE qb.subject_id = ? AND q.random_key < ?
+        ORDER BY q.random_key ASC
+        LIMIT ${remaining}
+      `;
+      const secondary = await query(secondarySql, [subjectId, randomSeed]);
+      return [...primary, ...secondary];
+    } catch (error) {
+      logger.error('按科目随机获取题目失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 根据科目章节ID获取题目（跨题库聚合，支持分页、全量、单题模式）
+   */
+  async getQuestionsBySubjectChapterId(
+    subjectChapterId: number,
+    page: number = 1,
+    limit: number = 0,
+    questionNumber?: number
+  ): Promise<{ questions?: Question[]; question?: Question; total: number; pagination?: any; currentNumber?: number; hasNext?: boolean; hasPrev?: boolean }> {
+    const subjectChapterIdNum = parseInt(String(subjectChapterId));
+
+    try {
+      const countSql = `
+        SELECT COUNT(*) as total
+        FROM questions q
+        INNER JOIN question_chapters qc ON q.chapter_id = qc.id
+        WHERE qc.subject_chapter_id = ?
+      `;
+      const countResult = await query(countSql, [subjectChapterIdNum]);
+      const total = countResult[0].total;
+
+      if (questionNumber !== undefined) {
+        const qNum = parseInt(String(questionNumber));
+        if (qNum < 1 || qNum > total) {
+          return { total, currentNumber: qNum };
+        }
+
+        const sql = `
+          SELECT q.*,
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q
+          INNER JOIN question_chapters qc ON q.chapter_id = qc.id
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qc.subject_chapter_id = ?
+          ORDER BY q.id ASC
+          LIMIT 1 OFFSET ${qNum - 1}
+        `;
+
+        const questions = await query(sql, [subjectChapterIdNum]);
+        return {
+          question: questions[0] || null,
+          total,
+          currentNumber: qNum,
+          hasNext: qNum < total,
+          hasPrev: qNum > 1,
+        };
+      }
+
+      let sql: string;
+
+      if (limit === 0) {
+        sql = `
+          SELECT q.*,
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q
+          INNER JOIN question_chapters qc ON q.chapter_id = qc.id
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qc.subject_chapter_id = ?
+          ORDER BY q.id ASC
+        `;
+      } else {
+        const offset = (page - 1) * limit;
+        const limitNum = Math.min(Math.max(parseInt(String(limit)), 1), 100);
+        const offsetNum = Math.max(parseInt(String(offset)), 0);
+        sql = `
+          SELECT q.*,
+                 qb.name as bank_name,
+                 qc.chapter_name
+          FROM questions q
+          INNER JOIN question_chapters qc ON q.chapter_id = qc.id
+          LEFT JOIN question_banks qb ON q.bank_id = qb.id
+          WHERE qc.subject_chapter_id = ?
+          ORDER BY q.id ASC
+          LIMIT ${limitNum} OFFSET ${offsetNum}
+        `;
+      }
+
+      const questions = await query(sql, [subjectChapterIdNum]);
+      return {
+        questions,
+        total,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: limit === 0 ? 1 : Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      logger.error('根据科目章节ID获取题目失败:', error);
+      throw error;
+    }
+  }
+
   /**
    * 批量创建题目（支持章节）
    */
@@ -571,12 +787,13 @@ class QuestionService {
       const sql = `
         INSERT INTO questions (
           bank_id, chapter_id, question_no, type, content, 
-          options, answer, explanation, difficulty, tags, created_at
+          options, answer, explanation, difficulty, tags, random_key, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `;
 
       for (const question of questions) {
+        const randomKey = Math.floor(Math.random() * 1000000);
         await query(sql, [
           bankId,
           chapterId,
@@ -588,6 +805,7 @@ class QuestionService {
           question.explanation || null,
           question.difficulty || 1,
           question.tags ? JSON.stringify(question.tags) : null,
+          randomKey,
         ]);
       }
 

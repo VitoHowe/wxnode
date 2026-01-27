@@ -6,7 +6,11 @@ import { NotFoundError } from '@/middleware/errorHandler';
 interface Chapter {
   id: number;
   bank_id: number;
+  subject_chapter_id?: number | null;
   chapter_name: string;
+  subject_chapter_name?: string | null;
+  subject_display_name?: string | null;
+  subject_chapter_order?: number | null;
   chapter_order: number;
   question_count: number;
   created_at: string;
@@ -20,9 +24,15 @@ class ChapterService {
   async getChaptersByBankId(bankId: number): Promise<Chapter[]> {
     try {
       const sql = `
-        SELECT * FROM question_chapters 
-        WHERE bank_id = ? 
-        ORDER BY chapter_order ASC
+        SELECT 
+          qc.*,
+          sc.chapter_name as subject_chapter_name,
+          sc.display_name as subject_display_name,
+          sc.chapter_order as subject_chapter_order
+        FROM question_chapters qc
+        LEFT JOIN subject_chapters sc ON qc.subject_chapter_id = sc.id
+        WHERE qc.bank_id = ? 
+        ORDER BY qc.chapter_order ASC
       `;
       
       const chapters = await query(sql, [bankId]);
@@ -84,15 +94,16 @@ class ChapterService {
   async createChapter(
     bankId: number,
     chapterName: string,
-    chapterOrder: number
+    chapterOrder: number,
+    subjectChapterId?: number | null
   ): Promise<Chapter> {
     try {
       const sql = `
-        INSERT INTO question_chapters (bank_id, chapter_name, chapter_order, question_count)
-        VALUES (?, ?, ?, 0)
+        INSERT INTO question_chapters (bank_id, subject_chapter_id, chapter_name, chapter_order, question_count)
+        VALUES (?, ?, ?, ?, 0)
       `;
       
-      const result = await query(sql, [bankId, chapterName, chapterOrder]);
+      const result = await query(sql, [bankId, subjectChapterId || null, chapterName, chapterOrder]);
       
       const chapter = await this.getChapterById(result.insertId);
       if (!chapter) {
@@ -117,7 +128,15 @@ class ChapterService {
         `;
         const existing = await query(existingSql, [bankId, chapterName]);
         if (existing.length > 0) {
-          return existing[0] as Chapter;
+          const chapter = existing[0] as Chapter;
+          if (subjectChapterId && !chapter.subject_chapter_id) {
+            await query(
+              `UPDATE question_chapters SET subject_chapter_id = ?, updated_at = NOW() WHERE id = ?`,
+              [subjectChapterId, chapter.id]
+            );
+            chapter.subject_chapter_id = subjectChapterId;
+          }
+          return chapter;
         }
       }
       

@@ -1,11 +1,41 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
 import { chapterController } from '@/controllers/chapterController';
-import { authenticateToken } from '@/middleware/auth';
+import { questionBankImageController } from '@/controllers/questionBankImageController';
+import { authenticateToken, requireAdmin } from '@/middleware/auth';
+import { validateRequest, validationSchemas } from '@/middleware/validation';
 
 const router: Router = Router();
 
 // 所有章节路由都需要认证
 router.use(authenticateToken);
+
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 50,
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimeTypes = [
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+      'image/gif',
+      'image/bmp',
+      'image/webp',
+    ];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const fileExtension = path.extname(file.originalname).toLowerCase();
+
+    if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
+      cb(null, true);
+    } else {
+      cb(new Error('仅支持 JPG, PNG, GIF, BMP, WEBP 图片格式'));
+    }
+  },
+});
 
 /**
  * @swagger
@@ -142,6 +172,38 @@ router.get('/:bankId/chapters', chapterController.getChaptersByBankId);
  *         description: 章节不存在或不属于该题库
  */
 router.get('/:bankId/chapters/:chapterId/questions', chapterController.getChapterQuestions);
+
+router.get(
+  '/:bankId/images',
+  requireAdmin,
+  validateRequest(validationSchemas.bankIdParam),
+  questionBankImageController.listImages
+);
+
+router.post(
+  '/:bankId/images',
+  requireAdmin,
+  validateRequest(validationSchemas.bankIdParam),
+  imageUpload.fields([
+    { name: 'images', maxCount: 50 },
+    { name: 'image', maxCount: 1 },
+  ]),
+  questionBankImageController.uploadImages
+);
+
+router.patch(
+  '/:bankId/images/:filename',
+  requireAdmin,
+  validateRequest(validationSchemas.questionBankImageRename),
+  questionBankImageController.renameImage
+);
+
+router.delete(
+  '/:bankId/images/:filename',
+  requireAdmin,
+  validateRequest(validationSchemas.questionBankImageDelete),
+  questionBankImageController.deleteImage
+);
 
 
 export default router;

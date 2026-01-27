@@ -1,141 +1,234 @@
-# 微信小程序题库管理系统 API 接口文档
+﻿# 寰俊灏忕▼搴忛搴撶鐞嗙郴缁?API 鎺ュ彛鏂囨。
 
-**版本**: v1.6.0
-**最后更新**: 2026-01-16
-**基础 URL**: `http://localhost:3001/api`
-**文档来源**: Swagger (/api-docs)，本文为发布物
+**鐗堟湰**: v1.7.0
+**鏈€鍚庢洿鏂?*: 2026-01-20
+**鍩虹 URL**: `http://localhost:3001/api`
+**鏂囨。鏉ユ簮**: Swagger (/api-docs)锛屾湰鏂囦负鍙戝竷鐗?
 
-## 更新日志
+## 鏇存柊鏃ュ織
 
 ### v1.6.0 (2026-01-16)
-- ✅ 接口清洗：移除未使用模块（users/system/parse-results/word-practice 等）
-- ✅ 契约收敛：保留 auth/题库/章节/单词书/进度/文件上传
-- ✅ Refresh 兼容：refreshToken 支持 body 与 Authorization
-- ✅ 文档治理：Swagger 为事实源，Markdown 为发布物
+- 鉁?鎺ュ彛娓呮礂锛氱Щ闄ゆ湭浣跨敤妯″潡锛坲sers/system/parse-results/word-practice 绛夛級
+- 鉁?濂戠害鏀舵暃锛氫繚鐣?auth/棰樺簱/绔犺妭/鍗曡瘝涔?杩涘害/鏂囦欢涓婁紶
+- 鉁?Refresh 鍏煎锛歳efreshToken 鏀寔 body 涓?Authorization
+- 鉁?鏂囨。娌荤悊锛歋wagger 涓轰簨瀹炴簮锛孧arkdown 涓哄彂甯冪墿
 
-## 通用约定
+### v1.7.0 (2026-01-20)
+- 鉁?鏂板绉戠洰/绔犺妭閰嶇疆鎺ュ彛锛堝惈鍚庡彴绠＄悊锛?- 鉁?鏂板棰樺簱瀵煎叆涓庣珷鑺?JSON 瀵煎叆锛堢粦瀹氱鐩級
+- 鉁?鏂板鐪熼缁冧範鎺ュ彛锛堣瘯鍗峰垪琛?閫愰/閿欓锛?
+## 閫氱敤绾﹀畾
 
-### 认证
-- 除 `/auth/login` 与 `/auth/refresh` 外，其余接口需要 `Authorization: Bearer <accessToken>`
-- 刷新令牌支持两种方式：
+### 璁よ瘉
+- 闄?`/auth/login` 涓?`/auth/refresh` 澶栵紝鍏朵綑鎺ュ彛闇€瑕?`Authorization: Bearer <accessToken>`
+- 鍒锋柊浠ょ墝鏀寔涓ょ鏂瑰紡锛?
   - `POST /auth/refresh` body: `{ "refreshToken": "..." }`
   - `Authorization: Bearer <refreshToken>`
 
-### 统一响应格式
+### 缁熶竴鍝嶅簲鏍煎紡
 ```json
 { "code": 200, "message": "ok", "data": {}, "timestamp": "2026-01-16T00:00:00.000Z" }
 ```
 
 
-### 常见错误码
-- 400 请求参数验证失败
-- 401 未授权或 Token 失效
-- 403 无权限
-- 404 资源不存在
-- 429 请求过于频繁
-- 500 服务异常
+### 甯歌閿欒鐮?
+- 400 璇锋眰鍙傛暟楠岃瘉澶辫触
+- 401 鏈巿鏉冩垨 Token 澶辨晥
+- 403 鏃犳潈闄?
+- 404 璧勬簮涓嶅瓨鍦?
+- 429 璇锋眰杩囦簬棰戠箒
+- 500 鏈嶅姟寮傚父
 
-## 接口目录
-- 认证: `POST /auth/login`, `POST /auth/refresh`, `GET /auth/profile`, `POST /auth/logout`
-- 题库: `GET /questions/banks`, `GET /questions/banks/:id`
-- 章节: `GET /question-banks/:bankId/chapters`, `GET /question-banks/:bankId/chapters/:chapterId/questions`
-- 单词书: `GET /word-books`, `GET /word-books/:id/words`
-- 进度: `GET /user-progress/:bankId/chapters`, `GET /user-progress/:bankId/full`, `POST /user-progress/:bankId/chapters/:chapterId`
-- 进度: `DELETE /user-progress/:bankId/chapters/:chapterId`, `DELETE /user-progress/:bankId`
-- 文件: `POST /files/upload`
-- 健康检查: `GET /health`
+## 鎺ュ彛鐩綍
+- 璁よ瘉: `POST /auth/login`, `POST /auth/refresh`, `GET /auth/profile`, `POST /auth/logout`
+- 棰樺簱: `GET /questions/banks`, `GET /questions/banks/:id`
+- 绉戠洰: `GET /subjects`, `GET /subjects/:subjectId/banks`, `GET /subjects/:subjectId/chapters`, `POST /subjects/:subjectId/chapters/sync`
+- 鍚庡彴棰樺簱閰嶇疆: `GET /admin/question-banks`, `POST /admin/question-banks/import-json`
+- 鐪熼: `GET /real-exams`, `GET /real-exams/:paperId/questions`, `POST /real-exams/:paperId/attempts`
+- 绔犺妭: `GET /question-banks/:bankId/chapters`, `GET /question-banks/:bankId/chapters/:chapterId/questions`
+- 鍗曡瘝涔? `GET /word-books`, `GET /word-books/:id/words`
+- 杩涘害: `GET /user-progress/:bankId/chapters`, `GET /user-progress/:bankId/full`, `POST /user-progress/:bankId/chapters/:chapterId`
+- 杩涘害: `DELETE /user-progress/:bankId/chapters/:chapterId`, `DELETE /user-progress/:bankId`
+- 鏂囦欢: `POST /files/upload`
+- 鍋ュ悍妫€鏌? `GET /health`
 
-## 认证
+## 璁よ瘉
 ### POST /auth/login
-说明: 微信 code 或普通账号密码登录
-请求示例 (微信):
+璇存槑: 寰俊 code 鎴栨櫘閫氳处鍙峰瘑鐮佺櫥褰?
+璇锋眰绀轰緥 (寰俊):
 ```json
 { "code": "wx_code", "encryptedData": "...", "iv": "...", "signature": "..." }
 ```
-请求示例 (账号):
+璇锋眰绀轰緥 (璐﹀彿):
 ```json
 { "username": "demo", "password": "secret" }
 ```
-响应 data: accessToken, refreshToken, expiresIn, user
+鍝嶅簲 data: accessToken, refreshToken, expiresIn, user
 
 ### POST /auth/refresh
-说明: 用 refreshToken 换新 accessToken，成功后会下发新的 refreshToken
-请求示例 (body):
+璇存槑: 鐢?refreshToken 鎹㈡柊 accessToken锛屾垚鍔熷悗浼氫笅鍙戞柊鐨?refreshToken
+璇锋眰绀轰緥 (body):
 ```json
 { "refreshToken": "..." }
 ```
-请求示例 (header): `Authorization: Bearer <refreshToken>`
-响应 data: accessToken, refreshToken, expiresIn
+璇锋眰绀轰緥 (header): `Authorization: Bearer <refreshToken>`
+鍝嶅簲 data: accessToken, refreshToken, expiresIn
 
 ### GET /auth/profile
-说明: 获取当前用户信息（需 Authorization）
+璇存槑: 鑾峰彇褰撳墠鐢ㄦ埛淇℃伅锛堥渶 Authorization锛?
 
 ### POST /auth/logout
-说明: 登出并使当前 token 失效（需 Authorization）
+璇存槑: 鐧诲嚭骞朵娇褰撳墠 token 澶辨晥锛堥渶 Authorization锛?
 
-## 题库管理
+## 棰樺簱绠＄悊
 ### GET /questions/banks
-说明: 获取题库列表（仅 parse_status=completed）
-查询参数: page (默认 1), limit (默认 20, 最大 100)
-响应 data: { banks: [], total, pagination }
+璇存槑: 鑾峰彇棰樺簱鍒楄〃锛堜粎 parse_status=completed锛?
+鏌ヨ鍙傛暟: page (榛樿 1), limit (榛樿 20, 鏈€澶?100)
+鍝嶅簲 data: { banks: [], total, pagination }
 
 ### GET /questions/banks/:id
-说明: 获取题库详情与统计信息
-响应 data: 题库信息 + statistics + question_count
+璇存槑: 鑾峰彇棰樺簱璇︽儏涓庣粺璁′俊鎭?
+鍝嶅簲 data: 棰樺簱淇℃伅 + statistics + question_count
 
-## 章节管理
+## 绔犺妭绠＄悊
 ### GET /question-banks/:bankId/chapters
-说明: 获取题库下章节列表
-响应 data: { chapters: [], totalChapters }
+璇存槑: 鑾峰彇棰樺簱涓嬬珷鑺傚垪琛?
+鍝嶅簲 data: { chapters: [], totalChapters }
 
 ### GET /question-banks/:bankId/chapters/:chapterId/questions
-说明: 获取章节题目列表
-查询参数: page (默认 1), limit (默认 0 = 全量, >0 分页)
-响应 data: { questions: [], total, pagination }
+璇存槑: 鑾峰彇绔犺妭棰樼洰鍒楄〃
+鏌ヨ鍙傛暟: page (榛樿 1), limit (榛樿 0 = 鍏ㄩ噺, >0 鍒嗛〉)
+鍝嶅簲 data: { questions: [], total, pagination }
 
-## 单词书
+## 鍗曡瘝涔?
 ### GET /word-books
-说明: 获取单词书列表
-查询参数: page (默认 1), limit (默认 10), keyword, language
-响应 data: { books: [], total, pagination }
+璇存槑: 鑾峰彇鍗曡瘝涔﹀垪琛?
+鏌ヨ鍙傛暟: page (榛樿 1), limit (榛樿 10), keyword, language
+鍝嶅簲 data: { books: [], total, pagination }
 
 ### GET /word-books/:id/words
-说明: 获取指定单词书的单词条目
-响应 data: { book, words: [], total, pagination }
+璇存槑: 鑾峰彇鎸囧畾鍗曡瘝涔︾殑鍗曡瘝鏉＄洰
+鍝嶅簲 data: { book, words: [], total, pagination }
 
-## 进度管理
+## 杩涘害绠＄悊
 ### GET /user-progress/:bankId/chapters
-说明: 获取题库各章节进度
-响应 data: 章节进度数组
+璇存槑: 鑾峰彇棰樺簱鍚勭珷鑺傝繘搴?
+鍝嶅簲 data: 绔犺妭杩涘害鏁扮粍
 
 ### GET /user-progress/:bankId/full
-说明: 获取整卷练习进度
-响应 data: 进度对象或 null
+璇存槑: 鑾峰彇鏁村嵎缁冧範杩涘害
+鍝嶅簲 data: 杩涘害瀵硅薄鎴?null
 
 ### POST /user-progress/:bankId/chapters/:chapterId
-说明: 保存章节/整卷进度
-请求 body: { practice_mode?, current_chapter_id?, current_question_number, completed_count?, total_questions }
-说明: practice_mode=full 时可传 current_chapter_id
-响应 data: 进度对象
+璇存槑: 淇濆瓨绔犺妭/鏁村嵎杩涘害
+璇锋眰 body: { practice_mode?, current_chapter_id?, current_question_number, completed_count?, total_questions }
+璇存槑: practice_mode=full 鏃跺彲浼?current_chapter_id
+鍝嶅簲 data: 杩涘害瀵硅薄
 
 ### DELETE /user-progress/:bankId/chapters/:chapterId
-说明: 重置章节进度
+璇存槑: 閲嶇疆绔犺妭杩涘害
 
 ### DELETE /user-progress/:bankId
-说明: 重置题库进度
+璇存槑: 閲嶇疆棰樺簱杩涘害
 
-## 文件管理
+## 鏂囦欢绠＄悊
 ### POST /files/upload
-说明: 上传题库文件（需 Authorization）
-请求: multipart/form-data，字段 file/name，description/type 可选
-支持格式: pdf, doc, docx, txt, md, xlsx, xls, csv, json, jpg, jpeg, png, gif, bmp, webp
-响应 data: 上传后的文件信息
+璇存槑: 涓婁紶棰樺簱鏂囦欢锛堥渶 Authorization锛?璇锋眰: multipart/form-data锛屽瓧娈?file/name锛宒escription/type 鍙€?鏀寔鏍煎紡: pdf, doc, docx, txt, md, xlsx, xls, csv, json, jpg, jpeg, png, gif, bmp, webp
+鍝嶅簲 data: 涓婁紶鍚庣殑鏂囦欢淇℃伅
 
-## 静态资源
+## 绉戠洰绠＄悊
+### GET /subjects
+璇存槑: 鑾峰彇鍚敤涓殑绉戠洰鍒楄〃
+鍝嶅簲 data: { subjects: [] }
+
+### GET /subjects/admin
+璇存槑: 鑾峰彇鍏ㄩ儴绉戠洰锛堝惈鍋滅敤锛岀鐞嗗憳锛?鍝嶅簲 data: { subjects: [] }
+
+### POST /subjects
+璇存槑: 鏂板绉戠洰锛堢鐞嗗憳锛?璇锋眰 body: { name, code?, status?, sort_order? }
+
+### PUT /subjects/:subjectId
+璇存槑: 鏇存柊绉戠洰锛堢鐞嗗憳锛屼粎鏀寔鍋滅敤锛?璇锋眰 body: { name?, code?, status?, sort_order? }
+
+### GET /subjects/:subjectId/banks
+璇存槑: 鑾峰彇绉戠洰涓嬮搴撳垪琛紙鏀寔鍒嗛〉锛?鏌ヨ鍙傛暟: page, limit
+鍝嶅簲 data: { banks: [], total, pagination }
+
+### GET /subjects/:subjectId/chapters
+璇存槑: 鑾峰彇绉戠洰绔犺妭鍒楄〃锛堝惈棰橀噺缁熻锛?鏌ヨ鍙傛暟: includeDisabled (鍙€夛紝绠＄悊鍛樹娇鐢?
+鍝嶅簲 data: { chapters: [] }
+
+### GET /subjects/:subjectId/chapter-aliases
+è¯´æ˜Ž: èŽ·å–ç§‘ç›®ç« èŠ‚åˆ«åæ˜ å°„ï¼ˆç®¡ç†å‘˜ï¼‰
+å“åº” data: { aliases: [] }
+
+### POST /subjects/:subjectId/chapter-aliases
+è¯´æ˜Ž: æ–°å¢žç§‘ç›®ç« èŠ‚åˆ«åæ˜ å°„ï¼ˆç®¡ç†å‘˜ï¼?è¯·æ±‚ body: { alias_name, subject_chapter_id }
+å“åº” data: alias
+
+### DELETE /subjects/:subjectId/chapter-aliases/:aliasId
+è¯´æ˜Ž: åˆ é™¤ç§‘ç›®ç« èŠ‚åˆ«åæ˜ å°„ï¼ˆç®¡ç†å‘˜ï¼‰
+
+### POST /subjects/:subjectId/chapters/sync
+说明: 同步科目章节与题库章节绑定（管理员），按章节名匹配/创建 subject_chapters，并回填 question_chapters.subject_chapter_id
+响应 data: { totalBanks, totalChapters, createdChapters, boundChapters, skippedChapters }
+
+### GET /subjects/:subjectId/chapters/:chapterId/questions
+璇存槑: 鑾峰彇绉戠洰绔犺妭棰樼洰锛堣法棰樺簱鑱氬悎锛?鏌ヨ鍙傛暟: page, limit, questionNumber
+鍝嶅簲 data: { questions | question, total, pagination }
+
+### GET /subjects/:subjectId/chapters/progress
+璇存槑: 鑾峰彇绉戠洰绔犺妭涓撻」杩涘害锛堟寜鐢ㄦ埛锛岄閲忎负璺ㄩ搴撹仛鍚堬級
+鍝嶅簲 data: [ { subject_chapter_id, current_question_number, completed_count, total_questions, progress_percentage, chapter_name, display_name } ]
+
+### POST /subjects/:subjectId/chapters/:chapterId/progress
+璇存槑: 淇濆瓨绉戠洰绔犺妭涓撻」杩涘害锛堟寜鐢ㄦ埛锛岄閲忎负璺ㄩ搴撹仛鍚堬級
+璇锋眰 body: { current_question_number, completed_count?, total_questions }
+鍝嶅簲 data: { subject_chapter_id, current_question_number, completed_count, total_questions, progress_percentage }
+
+### GET /subjects/:subjectId/random
+璇存槑: 绉戠洰闅忔満缁冧範
+鏌ヨ鍙傛暟: count (榛樿 10)
+鍝嶅簲 data: { questions, total }
+
+## 鍚庡彴棰樺簱閰嶇疆
+### GET /admin/question-banks
+璇存槑: 鑾峰彇棰樺簱鍒楄〃锛堢鐞嗗憳锛?鏌ヨ鍙傛暟: page, limit, subjectId
+鍝嶅簲 data: { list: [], total, pagination }
+
+### POST /admin/question-banks/import-json
+璇存槑: 鏁村簱 JSON 瀵煎叆锛堢鐞嗗憳锛岄渶缁戝畾绉戠洰锛?璇锋眰: multipart/form-data
+瀛楁: subjectId, name?, description?, file(.json)
+
+### POST /admin/question-banks/:bankId/chapters/import-json
+璇存槑: 鍗曠珷鑺?JSON 瀵煎叆锛堢鐞嗗憳锛?璇锋眰: multipart/form-data
+瀛楁: subjectChapterId, file(.json)
+
+### GET /admin/question-banks/:bankId/subject-chapters
+璇存槑: 鏌ョ湅棰樺簱鍚勭鐩珷鑺傞閲忥紙绠＄悊鍛橈級
+鍝嶅簲 data: { chapters: [] }
+
+## 鐪熼缁冧範
+### GET /real-exams
+璇存槑: 鑾峰彇绉戠洰璇曞嵎鍒楄〃
+鏌ヨ鍙傛暟: subjectId, page, limit
+鍝嶅簲 data: { papers: [], total, pagination }
+
+### GET /real-exams/:paperId/questions
+璇存槑: 鑾峰彇璇曞嵎棰樼洰锛堟敮鎸侀€愰锛?鏌ヨ鍙傛暟: page, limit, questionNumber
+鍝嶅簲 data: { questions | question, total, pagination }
+
+### POST /real-exams/:paperId/attempts
+璇存槑: 鎻愪氦绛旈缁熻涓庨敊棰?璇锋眰 body: { total_questions, correct_count, wrong_count, accuracy?, wrong_questions? }
+
+### GET /real-exams/:paperId/wrong-questions
+璇存槑: 鑾峰彇閿欓鍒楄〃
+
+## 闈欐€佽祫婧?
 ### GET /question-banks/:bankId/images/<filename>
-说明: 访问题库图片资源（无需鉴权）
+璇存槑: 璁块棶棰樺簱鍥剧墖璧勬簮锛堟棤闇€閴存潈锛?
 
-## 健康检查
+## 鍋ュ悍妫€鏌?
 ### GET /health
-说明: 服务健康检查（无鉴权）
+璇存槑: 鏈嶅姟鍋ュ悍妫€鏌ワ紙鏃犻壌鏉冿級
+
 

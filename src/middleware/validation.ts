@@ -199,6 +199,28 @@ export const validationSchemas = {
     }),
   },
 
+  // 题库列表查询验证（支持科目筛选）
+  questionBankListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1).messages({
+        'number.base': '页码必须是数字',
+        'number.integer': '页码必须是整数',
+        'number.min': '页码必须大于0',
+      }),
+      limit: Joi.number().integer().min(1).max(100).default(20).messages({
+        'number.base': '每页数量必须是数字',
+        'number.integer': '每页数量必须是整数',
+        'number.min': '每页数量必须大于0',
+        'number.max': '每页数量不能超过100',
+      }),
+      subjectId: Joi.number().integer().positive().optional().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+      }),
+    }),
+  },
+
   // 供应商列表查询验证
   providerListQuery: {
     query: Joi.object({
@@ -255,6 +277,14 @@ export const validationSchemas = {
   },
 
   // ID参数验证
+  markdownFileListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+      status: Joi.string().valid('pending', 'parsing', 'completed', 'failed').optional(),
+    }),
+  },
+
   idParam: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({
@@ -263,6 +293,425 @@ export const validationSchemas = {
         'number.positive': 'ID必须是正数',
         'any.required': 'ID是必需的',
       }),
+    }),
+  },
+
+  subjectIdParam: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+  },
+
+  bankIdParam: {
+    params: Joi.object({
+      bankId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bankId 必须是数字',
+        'number.integer': 'bankId 必须是整数',
+        'number.positive': 'bankId 必须是正数',
+        'any.required': 'bankId 是必需的',
+      }),
+    }),
+  },
+
+  questionBankImageRename: {
+    params: Joi.object({
+      bankId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bankId 必须是数字',
+        'number.integer': 'bankId 必须是整数',
+        'number.positive': 'bankId 必须是正数',
+        'any.required': 'bankId 是必需的',
+      }),
+      filename: Joi.string().min(1).max(255).required().messages({
+        'string.empty': 'filename 不能为空',
+        'string.max': 'filename 不能超过255个字符',
+        'any.required': 'filename 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      newFilename: Joi.string().min(1).max(255).required().messages({
+        'string.empty': 'newFilename 不能为空',
+        'string.max': 'newFilename 不能超过255个字符',
+        'any.required': 'newFilename 是必需的',
+      }),
+      overwrite: Joi.boolean().optional(),
+    }),
+  },
+
+  questionBankImageDelete: {
+    params: Joi.object({
+      bankId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bankId 必须是数字',
+        'number.integer': 'bankId 必须是整数',
+        'number.positive': 'bankId 必须是正数',
+        'any.required': 'bankId 是必需的',
+      }),
+      filename: Joi.string().min(1).max(255).required().messages({
+        'string.empty': 'filename 不能为空',
+        'string.max': 'filename 不能超过255个字符',
+        'any.required': 'filename 是必需的',
+      }),
+    }),
+  },
+
+  subjectCreate: {
+    body: Joi.object({
+      name: Joi.string().max(100).required().messages({
+        'string.empty': '科目名称不能为空',
+        'string.max': '科目名称不能超过100个字符',
+        'any.required': '科目名称是必需的',
+      }),
+      code: Joi.string().max(50).allow('', null).optional().messages({
+        'string.max': '科目编码不能超过50个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+      sort_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '排序必须是数字',
+        'number.integer': '排序必须是整数',
+        'number.min': '排序不能小于0',
+      }),
+    }),
+  },
+
+  subjectUpdate: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      name: Joi.string().max(100).optional().messages({
+        'string.empty': '科目名称不能为空',
+        'string.max': '科目名称不能超过100个字符',
+      }),
+      code: Joi.string().max(50).allow('', null).optional().messages({
+        'string.max': '科目编码不能超过50个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+      sort_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '排序必须是数字',
+        'number.integer': '排序必须是整数',
+        'number.min': '排序不能小于0',
+      }),
+    })
+      .min(1)
+      .messages({
+        'object.min': '至少提供一个需要更新的字段',
+      }),
+  },
+
+  subjectBanksQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+
+  subjectChapterCreate: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      chapter_name: Joi.string().max(200).required().messages({
+        'string.empty': '章节名称不能为空',
+        'string.max': '章节名称不能超过200个字符',
+        'any.required': '章节名称是必需的',
+      }),
+      display_name: Joi.string().max(200).allow('', null).optional().messages({
+        'string.max': '展示名称不能超过200个字符',
+      }),
+      chapter_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '章节排序必须是数字',
+        'number.integer': '章节排序必须是整数',
+        'number.min': '章节排序不能小于0',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }),
+  },
+
+  subjectChapterUpdate: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      chapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'chapterId 必须是数字',
+        'number.integer': 'chapterId 必须是整数',
+        'number.positive': 'chapterId 必须是正数',
+        'any.required': 'chapterId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      chapter_name: Joi.string().max(200).optional().messages({
+        'string.max': '章节名称不能超过200个字符',
+      }),
+      display_name: Joi.string().max(200).allow('', null).optional().messages({
+        'string.max': '展示名称不能超过200个字符',
+      }),
+      chapter_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '章节排序必须是数字',
+        'number.integer': '章节排序必须是整数',
+        'number.min': '章节排序不能小于0',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    })
+      .min(1)
+      .messages({
+        'object.min': '至少提供一个需要更新的字段',
+      }),
+  },
+
+  subjectChapterAliasCreate: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      alias_name: Joi.string().max(200).required().messages({
+        'string.empty': '章节别名不能为空',
+        'string.max': '章节别名不能超过200个字符',
+        'any.required': '章节别名是必需的',
+      }),
+      subject_chapter_id: Joi.number().integer().positive().required().messages({
+        'number.base': 'subject_chapter_id 必须是数字',
+        'number.integer': 'subject_chapter_id 必须是整数',
+        'number.positive': 'subject_chapter_id 必须是正数',
+        'any.required': 'subject_chapter_id 是必需的',
+      }),
+    }),
+  },
+
+  subjectChapterAliasDelete: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      aliasId: Joi.number().integer().positive().required().messages({
+        'number.base': 'aliasId 必须是数字',
+        'number.integer': 'aliasId 必须是整数',
+        'number.positive': 'aliasId 必须是正数',
+        'any.required': 'aliasId 是必需的',
+      }),
+    }),
+  },
+
+  subjectChapterQuestionsQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      chapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'chapterId 必须是数字',
+        'number.integer': 'chapterId 必须是整数',
+        'number.positive': 'chapterId 必须是正数',
+        'any.required': 'chapterId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(0).max(100).default(0),
+      questionNumber: Joi.number().integer().min(1).optional(),
+    }),
+  },
+
+  subjectChapterProgress: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      chapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'chapterId 必须是数字',
+        'number.integer': 'chapterId 必须是整数',
+        'number.positive': 'chapterId 必须是正数',
+        'any.required': 'chapterId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      current_question_number: Joi.number().integer().min(1).required().messages({
+        'number.base': 'current_question_number 必须是数字',
+        'number.integer': 'current_question_number 必须是整数',
+        'number.min': 'current_question_number 不能小于 1',
+        'any.required': 'current_question_number 是必需的',
+      }),
+      completed_count: Joi.number().integer().min(0).optional().messages({
+        'number.base': 'completed_count 必须是数字',
+        'number.integer': 'completed_count 必须是整数',
+        'number.min': 'completed_count 不能小于 0',
+      }),
+      total_questions: Joi.number().integer().min(0).required().messages({
+        'number.base': 'total_questions 必须是数字',
+        'number.integer': 'total_questions 必须是整数',
+        'number.min': 'total_questions 不能小于 0',
+        'any.required': 'total_questions 是必需的',
+      }),
+    }),
+  },
+
+  subjectRandomQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      count: Joi.number().integer().min(1).max(50).default(10),
+    }),
+  },
+
+  adminQuestionBankListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+      subjectId: Joi.number().integer().positive().optional(),
+    }),
+  },
+
+  adminQuestionBankImport: {
+    body: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      name: Joi.string().max(200).allow('', null).optional(),
+      description: Joi.string().max(500).allow('', null).optional(),
+    }),
+  },
+
+  adminQuestionBankChapterImport: {
+    params: Joi.object({
+      bankId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bankId 必须是数字',
+        'number.integer': 'bankId 必须是整数',
+        'number.positive': 'bankId 必须是正数',
+        'any.required': 'bankId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      subjectChapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectChapterId 必须是数字',
+        'number.integer': 'subjectChapterId 必须是整数',
+        'number.positive': 'subjectChapterId 必须是正数',
+        'any.required': 'subjectChapterId 是必需的',
+      }),
+    }),
+  },
+
+  realExamListQuery: {
+    query: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+
+  realExamPaperParam: {
+    params: Joi.object({
+      paperId: Joi.number().integer().positive().required().messages({
+        'number.base': 'paperId 必须是数字',
+        'number.integer': 'paperId 必须是整数',
+        'number.positive': 'paperId 必须是正数',
+        'any.required': 'paperId 是必需的',
+      }),
+    }),
+  },
+
+  realExamQuestionsQuery: {
+    params: Joi.object({
+      paperId: Joi.number().integer().positive().required().messages({
+        'number.base': 'paperId 必须是数字',
+        'number.integer': 'paperId 必须是整数',
+        'number.positive': 'paperId 必须是正数',
+        'any.required': 'paperId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(0).max(100).default(0),
+      questionNumber: Joi.number().integer().min(1).optional(),
+    }),
+  },
+
+  realExamAttemptCreate: {
+    params: Joi.object({
+      paperId: Joi.number().integer().positive().required().messages({
+        'number.base': 'paperId 必须是数字',
+        'number.integer': 'paperId 必须是整数',
+        'number.positive': 'paperId 必须是正数',
+        'any.required': 'paperId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      total_questions: Joi.number().integer().min(0).required(),
+      correct_count: Joi.number().integer().min(0).required(),
+      wrong_count: Joi.number().integer().min(0).required(),
+      accuracy: Joi.number().min(0).max(100).optional(),
+      wrong_questions: Joi.array()
+        .items(
+          Joi.object({
+            question_id: Joi.number().integer().positive().required(),
+            selected_answer: Joi.string().allow('', null).optional(),
+            correct_answer: Joi.string().allow('', null).optional(),
+          })
+        )
+        .optional(),
     }),
   },
 
@@ -285,6 +734,19 @@ export const validationSchemas = {
   },
 
   // 文件解析验证
+  markdownFileUpload: {
+    body: Joi.object({
+      name: Joi.string().max(200).required(),
+      description: Joi.string().max(500).allow('', null).optional(),
+    }).unknown(true),
+  },
+
+  markdownFileParse: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required(),
+    }),
+  },
+
   parseFile: {
     params: Joi.object({
       id: Joi.number().integer().positive().required().messages({

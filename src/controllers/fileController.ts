@@ -17,13 +17,14 @@ class FileController {
       return ResponseUtil.authError(res, '用户未登录');
     }
 
-    const { name, description } = req.body;
+    const { name, description, subjectId } = req.body;
 
     const result = await fileService.uploadFile({
       file: req.file,
       name,
       description,
       fileType: req.body.fileType,
+      subjectId: subjectId ? Number(subjectId) : undefined,
       userId: req.user.userId,
     });
 
@@ -160,7 +161,12 @@ class FileController {
       return ResponseUtil.validationError(res, '只支持JSON格式文件');
     }
 
-    const result = await fileService.uploadJsonFile(req.file, req.user.userId);
+    const { subjectId, name, description } = req.body;
+    const result = await fileService.uploadJsonFile(req.file, req.user.userId, {
+      subjectId: subjectId ? Number(subjectId) : undefined,
+      name,
+      description,
+    });
 
     return ResponseUtil.success(res, result, 'JSON文件导入成功');
   });

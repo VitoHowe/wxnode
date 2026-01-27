@@ -24,6 +24,23 @@ interface StudyProgress {
   progress_percentage?: number;
 }
 
+interface SpecialProgress {
+  id: number;
+  user_id: number;
+  subject_id: number;
+  subject_chapter_id: number;
+  current_question_number: number | null;
+  completed_count: number;
+  total_questions: number;
+  last_study_time: string;
+  created_at: string;
+  updated_at: string;
+  chapter_name?: string;
+  display_name?: string | null;
+  chapter_order?: number;
+  progress_percentage?: number;
+}
+
 // 更新进度参数
 interface UpdateProgressParams {
   practice_mode?: 'chapter' | 'full'; // 练习模式
@@ -36,6 +53,138 @@ interface UpdateProgressParams {
 }
 
 class UserProgressService {
+  /**
+   * 获取用户在科目章节中的专项进度（专项训练）
+   */
+  async getSubjectChapterProgress(
+    userId: number,
+    subjectId: number,
+    subjectChapterId: number
+  ): Promise<SpecialProgress | null> {
+    try {
+      const sql = `
+        SELECT 
+          usp.*,
+          sc.chapter_name,
+          sc.display_name,
+          sc.chapter_order
+        FROM user_special_progress usp
+        LEFT JOIN subject_chapters sc ON usp.subject_chapter_id = sc.id
+        WHERE usp.user_id = ? AND usp.subject_id = ? AND usp.subject_chapter_id = ?
+        LIMIT 1
+      `;
+      const results = await query(sql, [userId, subjectId, subjectChapterId]);
+      if (results.length === 0) {
+        return null;
+      }
+
+      const progress = results[0];
+      const progressPercentage = progress.total_questions > 0
+        ? Math.round((progress.completed_count / progress.total_questions) * 100)
+        : 0;
+
+      return {
+        ...progress,
+        progress_percentage: progressPercentage
+      };
+    } catch (error) {
+      logger.error('获取专项章节进度失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 获取用户在科目下所有章节的专项进度
+   */
+  async getSubjectChaptersProgress(
+    userId: number,
+    subjectId: number
+  ): Promise<SpecialProgress[]> {
+    try {
+      const sql = `
+        SELECT 
+          usp.*,
+          sc.chapter_name,
+          sc.display_name,
+          sc.chapter_order
+        FROM user_special_progress usp
+        LEFT JOIN subject_chapters sc ON usp.subject_chapter_id = sc.id
+        WHERE usp.user_id = ? AND usp.subject_id = ?
+        ORDER BY sc.chapter_order ASC, sc.id ASC
+      `;
+      const results = await query(sql, [userId, subjectId]);
+
+      return results.map((progress: any) => {
+        const progressPercentage = progress.total_questions > 0
+          ? Math.round((progress.completed_count / progress.total_questions) * 100)
+          : 0;
+
+        return {
+          ...progress,
+          progress_percentage: progressPercentage
+        };
+      });
+    } catch (error) {
+      logger.error('获取专项章节列表进度失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 保存专项章节进度
+   */
+  async saveSubjectChapterProgress(
+    userId: number,
+    subjectId: number,
+    subjectChapterId: number,
+    params: {
+      current_question_number: number;
+      completed_count?: number;
+      total_questions: number;
+    }
+  ): Promise<SpecialProgress> {
+    try {
+      const chapterRows = await query(
+        'SELECT id, subject_id FROM subject_chapters WHERE id = ? LIMIT 1',
+        [subjectChapterId]
+      );
+      if (chapterRows.length === 0 || Number(chapterRows[0].subject_id) !== subjectId) {
+        throw new NotFoundError('科目章节不存在');
+      }
+
+      const finalQuestionNumber = params.current_question_number;
+      const finalCompletedCount = params.completed_count !== undefined
+        ? params.completed_count
+        : finalQuestionNumber;
+
+      const sql = `
+        INSERT INTO user_special_progress
+        (user_id, subject_id, subject_chapter_id, current_question_number, completed_count, total_questions, last_study_time, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+          current_question_number = VALUES(current_question_number),
+          completed_count = VALUES(completed_count),
+          total_questions = VALUES(total_questions),
+          last_study_time = NOW(),
+          updated_at = NOW()
+      `;
+
+      await query(sql, [
+        userId,
+        subjectId,
+        subjectChapterId,
+        finalQuestionNumber,
+        finalCompletedCount,
+        params.total_questions
+      ]);
+
+      const updated = await this.getSubjectChapterProgress(userId, subjectId, subjectChapterId);
+      return updated!;
+    } catch (error) {
+      logger.error('保存专项章节进度失败:', error);
+      throw error;
+    }
+  }
   /**
    * 获取用户在指定章节的学习进度（章节练习模式）
    */

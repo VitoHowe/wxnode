@@ -39,7 +39,7 @@ router.use(authenticateToken);
  *       401:
  *         description: 未登录
  */
-router.get('/banks', validateRequest(validationSchemas.pagination), questionController.getQuestionBanks);
+router.get('/banks', validateRequest(validationSchemas.questionBankListQuery), questionController.getQuestionBanks);
 
 /**
  * @swagger

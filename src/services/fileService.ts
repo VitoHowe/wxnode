@@ -1,6 +1,6 @@
 import { query } from '@/config/database';
 import { logger } from '@/utils/logger';
-import { NotFoundError, AuthorizationError } from '@/middleware/errorHandler';
+import { NotFoundError, AuthorizationError, ValidationError } from '@/middleware/errorHandler';
 import { systemService } from './systemService';
 import { getParseStrategy, ParsedQuestion } from './providerStrategies/parseStrategies';
 import { FileContentReader } from '@/utils/fileContentReader';
@@ -17,6 +17,7 @@ interface QuestionBank {
   id: number;
   name: string;
   description?: string;
+  subject_id?: number | null;
   file_type: FileType;
   file_original_name: string;
   file_path: string;
@@ -36,6 +37,7 @@ interface UploadFileParams {
   name: string;
   description?: string;
   fileType?: FileType;
+  subjectId?: number;
   userId: number;
 }
 
@@ -54,15 +56,28 @@ class FileService {
    * 上传文件
    */
   async uploadFile(params: UploadFileParams): Promise<QuestionBank> {
-    const { file, name, description, fileType = 'question_bank', userId } = params;
+    const { file, name, description, fileType = 'question_bank', userId, subjectId } = params;
 
     try {
       const sql = `
-        INSERT INTO question_banks (name, description, file_type, file_original_name, file_path, file_size, parse_status, created_by, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
+        INSERT INTO question_banks (
+          name, description, subject_id, file_type,
+          file_original_name, file_path, file_size, parse_status,
+          created_by, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW(), NOW())
       `;
 
-      const result = await query(sql, [name, description || null, fileType, file.originalname, file.path, file.size, userId]);
+      const result = await query(sql, [
+        name,
+        description || null,
+        subjectId || null,
+        fileType,
+        file.originalname,
+        file.path,
+        file.size,
+        userId,
+      ]);
       
       const newFile = await this.getFileById(result.insertId);
       if (!newFile) {
@@ -405,7 +420,12 @@ class FileService {
       }
       
       // 保存解析的题目
-      await this.saveQuestions(id, result.questions);
+      await this.saveQuestions(
+        id,
+        result.questions,
+        filePath,
+        file.subject_id ?? undefined
+      );
       
       // 更新文件状态为已完成
       await query(
@@ -457,7 +477,12 @@ class FileService {
    * 2. 更新题库记录中的解析文件路径
    * 3. 按章节拆分保存到question_chapters和questions表
    */
-  private async saveQuestions(bankId: number, questions: ParsedQuestion[], originalFilePath?: string): Promise<void> {
+  private async saveQuestions(
+    bankId: number,
+    questions: ParsedQuestion[],
+    originalFilePath?: string,
+    subjectId?: number
+  ): Promise<void> {
     try {
       // 1. 保存解析结果为JSON文件
       const baseUploadPath = process.env.UPLOAD_PATH || './uploadFile';
@@ -485,7 +510,7 @@ class FileService {
       logger.info(`解析结果已保存为JSON文件: BankID=${bankId}, Path=${jsonFilePath}, TotalQuestions=${questions.length}`);
 
       // 2. 按章节拆分保存
-      await this.saveQuestionsByChapter(bankId, questions);
+      await this.saveQuestionsByChapter(bankId, questions, subjectId);
       
     } catch (error) {
       logger.error('保存解析结果失败:', error);
@@ -496,7 +521,11 @@ class FileService {
   /**
    * 按章节拆分保存题目
    */
-  private async saveQuestionsByChapter(bankId: number, questions: ParsedQuestion[]): Promise<void> {
+  private async saveQuestionsByChapter(
+    bankId: number,
+    questions: ParsedQuestion[],
+    subjectId?: number
+  ): Promise<void> {
     try {
       // 按tags字段分组（tags是数组，取第一个作为章节名）
       const chapterMap = new Map<string, ParsedQuestion[]>();
@@ -533,8 +562,17 @@ class FileService {
       // 为每个章节创建记录并保存题目
       let chapterOrder = 1;
       for (const [chapterName, chapterQuestions] of sortedChapters) {
+        const subjectChapterId = subjectId
+          ? await this.resolveSubjectChapterId(subjectId, chapterName, chapterOrder)
+          : null;
+
         // 创建章节
-        const chapter = await chapterService.createChapter(bankId, chapterName, chapterOrder);
+        const chapter = await chapterService.createChapter(
+          bankId,
+          chapterName,
+          chapterOrder,
+          subjectChapterId
+        );
         
         // 批量保存该章节的题目
         await questionService.createQuestionsWithChapter(bankId, chapter.id, chapterQuestions);
@@ -564,12 +602,93 @@ class FileService {
     }
   }
 
+  private async resolveSubjectChapterId(
+    subjectId: number,
+    chapterName: string,
+    chapterOrder: number
+  ): Promise<number> {
+    const normalizedName = chapterName.trim();
+    const aliasRows = await query(
+      `SELECT subject_chapter_id FROM subject_chapter_aliases WHERE subject_id = ? AND alias_name = ? LIMIT 1`,
+      [subjectId, normalizedName]
+    );
+
+    if (aliasRows.length > 0) {
+      return aliasRows[0].subject_chapter_id;
+    }
+
+    const existing = await query(
+      `SELECT id FROM subject_chapters WHERE subject_id = ? AND chapter_name = ? LIMIT 1`,
+      [subjectId, normalizedName]
+    );
+
+    if (existing.length > 0) {
+      return existing[0].id;
+    }
+
+    try {
+      const result = await query(
+        `INSERT INTO subject_chapters (subject_id, chapter_name, display_name, chapter_order, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, NOW(), NOW())`,
+        [subjectId, normalizedName, normalizedName, chapterOrder]
+      );
+      return result.insertId;
+    } catch (error: any) {
+      if (error?.code === 'ER_DUP_ENTRY') {
+        const retry = await query(
+          `SELECT id FROM subject_chapters WHERE subject_id = ? AND chapter_name = ? LIMIT 1`,
+          [subjectId, normalizedName]
+        );
+        if (retry.length > 0) {
+          return retry[0].id;
+        }
+      }
+      throw error;
+    }
+  }
+
+  private parseQuestionsFromJsonFile(file: Express.Multer.File): ParsedQuestion[] {
+    const jsonContent = fs.readFileSync(file.path, 'utf-8');
+    let parsedData: any;
+
+    try {
+      parsedData = JSON.parse(jsonContent);
+    } catch (parseError: any) {
+      logger.error('JSON文件解析失败', { error: parseError.message });
+      throw new Error('JSON格式错误，请检查文件内容');
+    }
+
+    if (!parsedData.questions || !Array.isArray(parsedData.questions)) {
+      logger.error('JSON文件缺少questions数组', { parsedData });
+      throw new Error('JSON文件格式错误：缺少questions数组');
+    }
+
+    if (parsedData.questions.length === 0) {
+      logger.warn('JSON文件的questions数组为空');
+      throw new Error('JSON文件中没有题目数据');
+    }
+
+    const questions = parsedData.questions as ParsedQuestion[];
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i];
+      if (!q.type || !q.content || !q.answer) {
+        throw new Error(`第${i + 1}题缺少必要字段(type, content, answer)`);
+      }
+    }
+
+    return questions;
+  }
+
   /**
    * 上传JSON文件并直接导入题库
    * @param file 上传的JSON文件
    * @param userId 用户ID
    */
-  async uploadJsonFile(file: Express.Multer.File, userId: number): Promise<QuestionBank> {
+  async uploadJsonFile(
+    file: Express.Multer.File,
+    userId: number,
+    options?: { subjectId?: number; name?: string; description?: string }
+  ): Promise<QuestionBank> {
     try {
       logger.info('开始处理JSON文件上传', {
         filename: file.originalname,
@@ -577,50 +696,20 @@ class FileService {
         userId,
       });
 
-      // 1. 读取JSON文件内容
-      const jsonContent = fs.readFileSync(file.path, 'utf-8');
-      let parsedData: any;
-      
-      try {
-        parsedData = JSON.parse(jsonContent);
-      } catch (parseError: any) {
-        logger.error('JSON文件解析失败', { error: parseError.message });
-        // 删除上传的文件
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-        throw new Error('JSON格式错误，请检查文件内容');
-      }
+      const questions = this.parseQuestionsFromJsonFile(file);
+      const subjectId = options?.subjectId;
 
-      // 2. 验证JSON结构
-      if (!parsedData.questions || !Array.isArray(parsedData.questions)) {
-        logger.error('JSON文件缺少questions数组', { parsedData });
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-        throw new Error('JSON文件格式错误：缺少questions数组');
-      }
-
-      if (parsedData.questions.length === 0) {
-        logger.warn('JSON文件的questions数组为空');
-        if (fs.existsSync(file.path)) {
-          fs.unlinkSync(file.path);
-        }
-        throw new Error('JSON文件中没有题目数据');
-      }
-
-      const questions = parsedData.questions as ParsedQuestion[];
-      
-      // 验证每个题目的基本字段
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        if (!q.type || !q.content || !q.answer) {
-          throw new Error(`第${i + 1}题缺少必要字段(type, content, answer)`);
+      if (subjectId) {
+        const subject = await query(`SELECT id FROM subjects WHERE id = ? LIMIT 1`, [subjectId]);
+        if (subject.length === 0) {
+          throw new NotFoundError('科目不存在');
         }
       }
 
       // 3. 从文件名提取题库名称（去掉.json后缀）
-      const bankName = path.basename(file.originalname, path.extname(file.originalname));
+      const bankName =
+        (options?.name && options.name.trim()) ||
+        path.basename(file.originalname, path.extname(file.originalname));
 
       logger.info('JSON文件验证通过', {
         bankName,
@@ -630,17 +719,20 @@ class FileService {
       // 4. 创建题库记录
       const sql = `
         INSERT INTO question_banks (
-          name, description, file_type, file_original_name, file_path, 
+          name, description, subject_id, file_type, file_original_name, file_path,
           file_size, parse_status, total_questions, created_by, created_at, updated_at
         )
-        VALUES (?, ?, 'question_bank', ?, ?, ?, 'completed', ?, ?, NOW(), NOW())
+        VALUES (?, ?, ?, 'question_bank', ?, ?, ?, 'completed', ?, ?, NOW(), NOW())
       `;
 
-      const description = `从JSON文件导入，共${questions.length}题`;
+      const description =
+        options?.description ||
+        `从JSON文件导入，共${questions.length}题`;
       
       const result = await query(sql, [
         bankName,
         description,
+        subjectId || null,
         file.originalname,
         file.path,
         file.size,
@@ -653,7 +745,7 @@ class FileService {
       logger.info('题库记录创建成功', { bankId, bankName });
 
       // 5. 按章节拆分保存题目
-      await this.saveQuestionsByChapter(bankId, questions);
+      await this.saveQuestionsByChapter(bankId, questions, subjectId);
       
       logger.info('原始JSON文件已保存', { 
         bankId, 
@@ -693,6 +785,71 @@ class FileService {
       }
       
       throw error;
+    }
+  }
+
+  async uploadChapterJsonFile(params: {
+    file: Express.Multer.File;
+    userId: number;
+    bankId: number;
+    subjectChapterId: number;
+  }): Promise<{ bankId: number; chapterId: number; questionCount: number }> {
+    const { file, userId, bankId, subjectChapterId } = params;
+
+    try {
+      logger.info('开始处理章节JSON上传', { filename: file.originalname, bankId, userId });
+
+      const questions = this.parseQuestionsFromJsonFile(file);
+
+      const bank = await this.getFileById(bankId);
+      if (!bank) {
+        throw new NotFoundError('题库不存在');
+      }
+      if (!bank.subject_id) {
+        throw new ValidationError('题库未绑定科目，请先绑定科目');
+      }
+
+      const subjectChapters = await query(
+        `SELECT id, subject_id, chapter_name, chapter_order FROM subject_chapters WHERE id = ? LIMIT 1`,
+        [subjectChapterId]
+      );
+      if (subjectChapters.length === 0) {
+        throw new NotFoundError('科目章节不存在');
+      }
+
+      const subjectChapter = subjectChapters[0];
+      if (Number(subjectChapter.subject_id) !== Number(bank.subject_id)) {
+        throw new ValidationError('章节不属于该题库绑定的科目');
+      }
+
+      const chapter = await chapterService.createChapter(
+        bankId,
+        subjectChapter.chapter_name,
+        subjectChapter.chapter_order || 0,
+        subjectChapter.id
+      );
+
+      await questionService.createQuestionsWithChapter(bankId, chapter.id, questions);
+      await chapterService.updateChapterQuestionCount(chapter.id, questions.length);
+      await questionService.updateBankQuestionCount(bankId);
+
+      logger.info('章节JSON导入完成', {
+        bankId,
+        chapterId: chapter.id,
+        questionCount: questions.length,
+      });
+
+      return { bankId, chapterId: chapter.id, questionCount: questions.length };
+    } catch (error: any) {
+      logger.error('章节JSON上传失败', {
+        error: error.message,
+        filename: file.originalname,
+      });
+      throw error;
+    } finally {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
     }
   }
 

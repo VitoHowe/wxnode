@@ -64,6 +64,22 @@ export const extractQuestionImages = (question: any): string[] => {
   if (question.explanation) {
     images.push(...extractImageReferences(question.explanation));
   }
+
+  // 从答案中提取
+  if (question.answer) {
+    images.push(...extractImageReferences(question.answer));
+  }
+
+  // 从选项中提取
+  if (Array.isArray(question.options)) {
+    question.options.forEach((option: any) => {
+      if (typeof option === 'string') {
+        images.push(...extractImageReferences(option));
+      }
+    });
+  } else if (typeof question.options === 'string') {
+    images.push(...extractImageReferences(question.options));
+  }
   
   // 去重
   return Array.from(new Set(images));
@@ -89,6 +105,18 @@ export const replaceQuestionImages = (
   
   if (processed.explanation) {
     processed.explanation = replaceImageReferences(processed.explanation, bankId, baseUrl);
+  }
+
+  if (processed.answer) {
+    processed.answer = replaceImageReferences(processed.answer, bankId, baseUrl);
+  }
+
+  if (Array.isArray(processed.options)) {
+    processed.options = processed.options.map((option: any) =>
+      typeof option === 'string' ? replaceImageReferences(option, bankId, baseUrl) : option
+    );
+  } else if (typeof processed.options === 'string') {
+    processed.options = replaceImageReferences(processed.options, bankId, baseUrl);
   }
   
   return processed;
