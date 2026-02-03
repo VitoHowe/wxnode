@@ -208,6 +208,23 @@ class ChapterService {
   }
 
   /**
+   * 删除章节相关的学习进度
+   */
+  async deleteChapterProgress(bankId: number, chapterId: number): Promise<void> {
+    try {
+      await query(
+        `DELETE FROM user_study_progress
+         WHERE bank_id = ? AND (chapter_id = ? OR current_chapter_id = ?)`,
+        [bankId, chapterId, chapterId]
+      );
+      logger.info('删除章节学习进度成功', { bankId, chapterId });
+    } catch (error) {
+      logger.error('删除章节学习进度失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取题库章节统计
    */
   async getBankChapterStats(bankId: number): Promise<{

@@ -109,7 +109,9 @@ class ChapterController {
       }
       
       await chapterService.deleteChapter(chapterId);
-      
+      await chapterService.deleteChapterProgress(bankId, chapterId);
+      await questionService.updateBankQuestionCount(bankId);
+
       ResponseUtil.success(res, null, '删除章节成功');
     } catch (error) {
       next(error);

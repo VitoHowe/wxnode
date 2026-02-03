@@ -1,5 +1,6 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
+import AdmZip from 'adm-zip';
 import { query } from '@/config/database';
 import { extractImageReferences } from '@/utils/imageParser';
 import { ConflictError, NotFoundError, ValidationError } from '@/middleware/errorHandler';
@@ -18,6 +19,9 @@ export interface UploadImageResult {
   total_uploaded: number;
 }
 
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']);
+const ZIP_EXTENSIONS = new Set(['.zip']);
+
 class QuestionBankImageService {
   private async ensureBankExists(bankId: number): Promise<void> {
     const rows = await query(`SELECT id FROM question_banks WHERE id = ? LIMIT 1`, [bankId]);
@@ -32,7 +36,73 @@ class QuestionBankImageService {
 
   private sanitizeFilename(filename: string): string {
     const baseName = path.basename(filename);
-    return baseName.replace(/[\\/:*?"<>|]/g, '_');
+    return baseName.replace(/[\/:*?"<>|]/g, '_');
+  }
+
+  private isImageFilename(filename: string): boolean {
+    const ext = path.extname(filename).toLowerCase();
+    return IMAGE_EXTENSIONS.has(ext);
+  }
+
+  private isZipFile(file: Express.Multer.File): boolean {
+    const rawName = file.originalname || file.filename || '';
+    const ext = path.extname(rawName).toLowerCase();
+    if (ZIP_EXTENSIONS.has(ext)) return true;
+    const mime = (file.mimetype || '').toLowerCase();
+    return mime === 'application/zip' || mime === 'application/x-zip-compressed';
+  }
+
+  private async extractZipImages(
+    bankId: number,
+    file: Express.Multer.File,
+    options?: { overwrite?: boolean }
+  ): Promise<UploadImageResult> {
+    const overwrite = !!options?.overwrite;
+    const uploaded: Array<{ filename: string; url: string; size: number }> = [];
+    const skipped: Array<{ filename: string; reason: string }> = [];
+
+    let zip: AdmZip;
+    try {
+      zip = new AdmZip(file.buffer);
+    } catch (_error) {
+      throw new ValidationError('压缩包解析失败');
+    }
+
+    const dir = this.getImagesDir(bankId);
+    await fs.promises.mkdir(dir, { recursive: true });
+
+    for (const entry of zip.getEntries()) {
+      if (entry.isDirectory) {
+        skipped.push({ filename: entry.entryName, reason: '目录已跳过' });
+        continue;
+      }
+      const baseName = path.basename(entry.entryName);
+      if (!baseName) {
+        skipped.push({ filename: entry.entryName, reason: '文件名无效' });
+        continue;
+      }
+      if (!this.isImageFilename(baseName)) {
+        skipped.push({ filename: baseName, reason: '非图片文件' });
+        continue;
+      }
+
+      const safeName = this.sanitizeFilename(baseName);
+      const targetPath = path.join(dir, safeName);
+      if (fs.existsSync(targetPath) && !overwrite) {
+        skipped.push({ filename: safeName, reason: '文件已存在' });
+        continue;
+      }
+
+      const data = entry.getData();
+      await fs.promises.writeFile(targetPath, data);
+      uploaded.push({
+        filename: safeName,
+        url: `/api/question-banks/${bankId}/images/${encodeURIComponent(safeName)}`,
+        size: data.length,
+      });
+    }
+
+    return { uploaded, skipped, total_uploaded: uploaded.length };
   }
 
   private collectQuestionImages(question: any): string[] {
@@ -133,6 +203,13 @@ class QuestionBankImageService {
     const skipped: Array<{ filename: string; reason: string }> = [];
 
     for (const file of files) {
+      if (this.isZipFile(file)) {
+        const result = await this.extractZipImages(bankId, file, options);
+        uploaded.push(...result.uploaded);
+        skipped.push(...result.skipped);
+        continue;
+      }
+
       const safeName = this.sanitizeFilename(file.originalname || file.filename || '');
       if (!safeName) {
         skipped.push({ filename: file.originalname || 'unknown', reason: '文件名无效' });

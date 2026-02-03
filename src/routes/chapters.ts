@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { chapterController } from '@/controllers/chapterController';
@@ -14,7 +14,7 @@ router.use(authenticateToken);
 const imageUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024,
+    fileSize: 20 * 1024 * 1024,
     files: 50,
   },
   fileFilter: (_req, file, cb) => {
@@ -25,14 +25,16 @@ const imageUpload = multer({
       'image/gif',
       'image/bmp',
       'image/webp',
+      'application/zip',
+      'application/x-zip-compressed',
     ];
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.zip'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
 
     if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(fileExtension)) {
       cb(null, true);
     } else {
-      cb(new Error('仅支持 JPG, PNG, GIF, BMP, WEBP 图片格式'));
+      cb(new Error('仅支持 JPG, PNG, GIF, BMP, WEBP, ZIP 图片格式'));
     }
   },
 });
@@ -172,6 +174,45 @@ router.get('/:bankId/chapters', chapterController.getChaptersByBankId);
  *         description: 章节不存在或不属于该题库
  */
 router.get('/:bankId/chapters/:chapterId/questions', chapterController.getChapterQuestions);
+
+/**
+ * @swagger
+ * /api/question-banks/{bankId}/chapters/{chapterId}:
+ *   delete:
+ *     tags: [章节管理]
+ *     summary: 删除题库章节
+ *     description: 删除指定题库的章节并级联删除章节下题目
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bankId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 题库ID
+ *       - in: path
+ *         name: chapterId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: 章节ID
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ *       401:
+ *         description: 未登录
+ *       403:
+ *         description: 无权限
+ *       404:
+ *         description: 章节不存在或不属于该题库
+ */
+router.delete(
+  '/:bankId/chapters/:chapterId',
+  requireAdmin,
+  validateRequest(validationSchemas.bankChapterParam),
+  chapterController.deleteChapter
+);
 
 router.get(
   '/:bankId/images',

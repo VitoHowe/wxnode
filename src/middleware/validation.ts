@@ -317,6 +317,22 @@ export const validationSchemas = {
       }),
     }),
   },
+  bankChapterParam: {
+    params: Joi.object({
+      bankId: Joi.number().integer().positive().required().messages({
+        'number.base': 'bankId 必须是数字',
+        'number.integer': 'bankId 必须是整数',
+        'number.positive': 'bankId 必须是正数',
+        'any.required': 'bankId 是必需的',
+      }),
+      chapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'chapterId 必须是数字',
+        'number.integer': 'chapterId 必须是整数',
+        'number.positive': 'chapterId 必须是正数',
+        'any.required': 'chapterId 是必需的',
+      }),
+    }),
+  },
 
   questionBankImageRename: {
     params: Joi.object({

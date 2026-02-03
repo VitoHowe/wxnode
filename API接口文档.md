@@ -1,7 +1,7 @@
 ﻿# 寰俊灏忕▼搴忛搴撶鐞嗙郴缁?API 鎺ュ彛鏂囨。
 
-**鐗堟湰**: v1.7.0
-**鏈€鍚庢洿鏂?*: 2026-01-20
+**鐗堟湰**: v1.8.0
+**鏈€鍚庢洿鏂?*: 2026-01-27
 **鍩虹 URL**: `http://localhost:3001/api`
 **鏂囨。鏉ユ簮**: Swagger (/api-docs)锛屾湰鏂囦负鍙戝竷鐗?
 
@@ -12,6 +12,11 @@
 - 鉁?濂戠害鏀舵暃锛氫繚鐣?auth/棰樺簱/绔犺妭/鍗曡瘝涔?杩涘害/鏂囦欢涓婁紶
 - 鉁?Refresh 鍏煎锛歳efreshToken 鏀寔 body 涓?Authorization
 - 鉁?鏂囨。娌荤悊锛歋wagger 涓轰簨瀹炴簮锛孧arkdown 涓哄彂甯冪墿
+
+### v1.8.0 (2026-01-27)
+- ✅ 新增 Markdown 解析中心接口（文件上传/解析/章节列表/下载）
+- ✅ 新增 Markdown 静态资源管理（source.md 与章节文件直连下载）
+- ✅ 解析规则优化：仅当 H1 标题包含“第 X 章”时才进行章节拆分
 
 ### v1.7.0 (2026-01-20)
 - 鉁?鏂板绉戠洰/绔犺妭閰嶇疆鎺ュ彛锛堝惈鍚庡彴绠＄悊锛?- 鉁?鏂板棰樺簱瀵煎叆涓庣珷鑺?JSON 瀵煎叆锛堢粦瀹氱鐩級
@@ -95,6 +100,11 @@
 鍝嶅簲 data: { chapters: [], totalChapters }
 
 ### GET /question-banks/:bankId/chapters/:chapterId/questions
+### DELETE /question-banks/:bankId/chapters/:chapterId
+说明: 删除题库章节并级联删除章节题目（管理员）
+说明: 同时清理该章节相关的学习进度记录
+响应 data: null
+
 璇存槑: 鑾峰彇绔犺妭棰樼洰鍒楄〃
 鏌ヨ鍙傛暟: page (榛樿 1), limit (榛樿 0 = 鍏ㄩ噺, >0 鍒嗛〉)
 鍝嶅簲 data: { questions: [], total, pagination }
@@ -231,4 +241,38 @@
 ### GET /health
 璇存槑: 鏈嶅姟鍋ュ悍妫€鏌ワ紙鏃犻壌鏉冿級
 
+## Markdown 解析中心（后台）
+### GET /admin/markdown-files
+说明: 列出 Markdown 文档
+查询参数: page (默认 1), limit (默认 20, 最大 100), status (all|parsed|unparsed)
+响应 data: { files: [], total, pagination }
 
+### POST /admin/markdown-files
+说明: 上传 Markdown 文档（multipart/form-data）
+请求参数: file (.md), name, description (可选)
+响应 data: 文档信息
+
+### GET /admin/markdown-files/:id
+说明: 获取 Markdown 文档详情
+响应 data: 文档详情
+
+### POST /admin/markdown-files/:id/parse
+说明: 解析章节，仅当 H1 标题包含“第 X 章”时才拆分
+响应 data: { chapter_count }
+
+### GET /admin/markdown-files/:id/chapters
+说明: 获取解析后章节列表
+响应 data: { chapters: [], total }
+
+### DELETE /admin/markdown-files/:id
+说明: 删除 Markdown 文档，同时清理章节文件
+
+## Markdown 静态资源
+### GET /markdown-files/:fileId/source.md
+说明: 获取原始 Markdown 文件（不需认证）
+
+### GET /markdown-files/:fileId/chapters/:filename
+说明: 下载某个解析后章节文件（不需认证）
+
+### POST /question-banks/{bankId}/images
+说明: 支持批量图片上传，也支持上传 zip 压缩包自动解压导入图片（非图片条目会跳过）
