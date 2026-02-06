@@ -731,6 +731,56 @@ export const validationSchemas = {
     }),
   },
 
+  practiceSummaryQuery: {
+    query: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      mode: Joi.string().valid('real', 'mock', 'special', 'random').optional(),
+    }),
+  },
+
+  practiceWrongListQuery: {
+    query: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      mode: Joi.string().valid('real', 'mock', 'special', 'random').optional(),
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+    }),
+  },
+
+  practiceAttemptCreate: {
+    body: Joi.object({
+      subject_id: Joi.number().integer().positive().required(),
+      mode: Joi.string().valid('real', 'mock', 'special', 'random').required(),
+      source_type: Joi.string().valid('paper', 'bank', 'chapter', 'subject_chapter', 'subject').required(),
+      source_id: Joi.number().integer().positive().required(),
+      total_questions: Joi.number().integer().min(0).required(),
+      correct_count: Joi.number().integer().min(0).required(),
+      wrong_count: Joi.number().integer().min(0).required(),
+      accuracy: Joi.number().min(0).max(100).optional(),
+      question_source: Joi.string().valid('real_exam', 'question_bank').required(),
+      question_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required(),
+      wrong_questions: Joi.array()
+        .items(
+          Joi.object({
+            question_id: Joi.number().integer().positive().required(),
+            selected_answer: Joi.string().allow('', null).optional(),
+            correct_answer: Joi.string().allow('', null).optional(),
+          })
+        )
+        .optional(),
+    }),
+  },
+
   // 文件上传验证
   fileUpload: {
     body: Joi.object({

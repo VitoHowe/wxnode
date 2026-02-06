@@ -421,6 +421,64 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='真题错题表'
     `);
 
+    // 创建练习统计表（非真题模式）
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS practice_attempts (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        user_id INT NOT NULL COMMENT '用户ID',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        mode ENUM('real', 'mock', 'special', 'random') NOT NULL COMMENT '练习模式',
+        source_type ENUM('paper', 'bank', 'chapter', 'subject_chapter', 'subject') NOT NULL COMMENT '来源类型',
+        source_id INT NOT NULL COMMENT '来源ID',
+        total_questions INT NOT NULL DEFAULT 0,
+        correct_count INT NOT NULL DEFAULT 0,
+        wrong_count INT NOT NULL DEFAULT 0,
+        accuracy DECIMAL(5,2) NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        INDEX idx_practice_user (user_id),
+        INDEX idx_practice_subject (subject_id),
+        INDEX idx_practice_mode (mode),
+        INDEX idx_practice_source (source_type, source_id),
+        INDEX idx_practice_created (created_at),
+        CONSTRAINT fk_practice_user FOREIGN KEY (user_id)
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_practice_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='练习统计表'
+    `);
+
+    // 创建练习错题集表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS practice_wrong_questions (
+        id INT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+        user_id INT NOT NULL COMMENT '用户ID',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        mode ENUM('real', 'mock', 'special', 'random') NOT NULL COMMENT '练习模式',
+        source_type ENUM('paper', 'bank', 'chapter', 'subject_chapter', 'subject') NOT NULL COMMENT '来源类型',
+        source_id INT NOT NULL COMMENT '来源ID',
+        question_source ENUM('real_exam', 'question_bank') NOT NULL COMMENT '题目来源',
+        question_id INT NOT NULL COMMENT '题目ID',
+        selected_answer TEXT NULL COMMENT '用户答案',
+        correct_answer TEXT NULL COMMENT '正确答案',
+        wrong_times INT NOT NULL DEFAULT 1 COMMENT '错题次数',
+        correct_streak INT NOT NULL DEFAULT 0 COMMENT '连续答对次数',
+        last_wrong_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '最近错题时间',
+        last_correct_at DATETIME NULL COMMENT '最近答对时间',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        UNIQUE KEY uk_wrong_unique (user_id, subject_id, question_source, question_id),
+        INDEX idx_wrong_user (user_id),
+        INDEX idx_wrong_subject (subject_id),
+        INDEX idx_wrong_mode (mode),
+        INDEX idx_wrong_source (source_type, source_id),
+        INDEX idx_wrong_updated (updated_at),
+        CONSTRAINT fk_practice_wrong_user FOREIGN KEY (user_id)
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_practice_wrong_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='练习错题集'
+    `);
+
     // 创建用户学习进度表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS user_study_progress (

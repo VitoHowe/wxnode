@@ -25,6 +25,7 @@ import subjectRoutes from '@/routes/subjects';
 import adminQuestionBankRoutes from '@/routes/adminQuestionBanks';
 import realExamRoutes from '@/routes/realExams';
 import markdownFileRoutes from '@/routes/markdownFiles';
+import practiceRoutes from '@/routes/practice';
 
 // 加载环境变量
 // 优先加载 .env 文件（Docker 环境），如果不存在则尝试加载 .process 文件（本地开发环境）
@@ -133,6 +134,7 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/admin/question-banks', adminQuestionBankRoutes);
 app.use('/api/real-exams', realExamRoutes);
 app.use('/api/admin/markdown-files', markdownFileRoutes);
+app.use('/api/practice', practiceRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);

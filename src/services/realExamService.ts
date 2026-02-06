@@ -1,5 +1,6 @@
 import { query } from '@/config/database';
 import { NotFoundError, ValidationError } from '@/middleware/errorHandler';
+import { practiceService } from '@/services/practiceService';
 
 export interface RealExamPaper {
   id: number;
@@ -199,6 +200,20 @@ class RealExamService {
         ]);
       }
     }
+
+    const questionRows = await query(`SELECT id FROM real_exam_questions WHERE paper_id = ?`, [params.paperId]);
+    const questionIds = (questionRows || []).map((row: any) => Number(row.id)).filter((id: number) => Number.isFinite(id));
+
+    await practiceService.updateWrongSet({
+      userId: params.userId,
+      subjectId: paper.subject_id,
+      mode: 'real',
+      sourceType: 'paper',
+      sourceId: params.paperId,
+      questionSource: 'real_exam',
+      questionIds,
+      wrongQuestions: params.wrong_questions || [],
+    });
 
     return { attemptId };
   }
