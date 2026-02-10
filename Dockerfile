@@ -1,95 +1,82 @@
 # ===================================
-# Stage 1: Builder - 构建 TypeScript
+# Stage 1: Builder - Build TypeScript
+#
+# Why not Alpine?
+# canvas (node-canvas) usually has no prebuilt binary for linux-musl. On Alpine it falls back to building
+# from source, and can fail due to toolchain/header differences. Debian (glibc) makes installs much steadier.
 # ===================================
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 
-# 设置工作目录
 WORKDIR /app
 
-# 安装构建依赖（包括 canvas 所需的 Cairo 库）
-RUN apk add --no-cache \
+# Build deps for native modules (canvas, etc.)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     make \
     g++ \
-    cairo-dev \
-    jpeg-dev \
-    pango-dev \
-    giflib-dev \
-    pixman-dev \
-    freetype-dev
+    pkg-config \
+    libcairo2-dev \
+    libpango1.0-dev \
+    libjpeg-dev \
+    libgif-dev \
+    librsvg2-dev \
+    libpixman-1-dev \
+    libfreetype6-dev \
+  && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
 COPY package*.json ./
 
-# 安装所有依赖（包括 devDependencies）
-# 注意：项目使用 pnpm，但 Docker 中使用 npm 以简化配置
-RUN npm install
+# Use npm ci when lockfile exists to keep builds reproducible.
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-# 复制源代码和配置文件
 COPY tsconfig.json ./
 COPY src ./src
 
-# 构建 TypeScript（自动运行 tsc-alias）
 RUN npm run build && \
-    echo "✅ 编译完成，验证路径别名解析..." && \
-    (grep -r "@/" dist/ && echo "❌ 发现未解析的路径别名" && exit 1 || echo "✅ 路径别名已全部解析")
+    echo "Build OK. Validating path aliases..." && \
+    (grep -r "@/" dist/ && echo "Found unresolved path alias '@/' in dist output" && exit 1 || echo "Aliases OK")
 
-# 清理开发依赖，只保留生产依赖
-# 注意：tsc-alias 已经解析了路径别名，不再需要 tsconfig-paths
-RUN npm prune --production
+# Keep only production dependencies.
+RUN npm prune --omit=dev
 
 # ===================================
-# Stage 2: Production - 生产环境
+# Stage 2: Production - Runtime
 # ===================================
-FROM node:20-alpine
+FROM node:20-bookworm-slim
 
-# 设置工作目录
 WORKDIR /app
 
-# 安装运行时依赖（用于 canvas 等 native 模块）
-RUN apk add --no-cache \
-    cairo \
-    pango \
-    jpeg \
-    giflib \
-    pixman \
-    freetype \
-    netcat-openbsd
+# Runtime deps for canvas + netcat (docker-entrypoint.sh uses nc)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libjpeg62-turbo \
+    libgif7 \
+    librsvg2-2 \
+    libpixman-1-0 \
+    libfreetype6 \
+    netcat-openbsd \
+  && rm -rf /var/lib/apt/lists/*
 
-# 创建非 root 用户
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# 复制依赖文件
 COPY package*.json ./
-
-# 从 builder 阶段复制已安装的 node_modules
 COPY --from=builder /app/node_modules ./node_modules
-
-# 从 builder 阶段复制构建产物
 COPY --from=builder /app/dist ./dist
 
-# 复制必要的配置文件和目录结构
 COPY tsconfig.json ./
 COPY migrations ./migrations
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-# 设置脚本执行权限
-RUN chmod +x /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh && \
+    mkdir -p uploads logs public/question-banks && \
+    chown -R node:node /app
 
-# 创建必要的目录
-RUN mkdir -p uploads logs public/question-banks && \
-    chown -R nodejs:nodejs /app
+USER node
 
-# 切换到非 root 用户
-USER nodejs
-
-# 暴露端口
 EXPOSE 3006
 
-# 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3006/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# 启动命令（路径别名已在编译时解析，无需 tsconfig-paths）
 CMD ["node", "dist/app.js"]
+
