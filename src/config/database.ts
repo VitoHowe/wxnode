@@ -109,7 +109,6 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
         last_login_at TIMESTAMP NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_openid (openid),
         INDEX idx_unionid (unionid),
         FOREIGN KEY (role_id) REFERENCES roles(id)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -1112,6 +1111,9 @@ const migrateUserStudyProgressTable = async (
  */
 const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void> => {
   try {
+    // openid 已经是 UNIQUE，这个普通索引属于重复建设；老库可能带着它，先清一下避免把 key 数堆到 64 上限
+    await dropIndexIfExists(connection, 'users', 'idx_openid');
+
     // 检查username字段是否存在
     const usernameColumnCheck = await connection.execute(`
       SELECT COLUMN_NAME 
@@ -1122,20 +1124,28 @@ const migrateUserTable = async (connection: mysql.PoolConnection): Promise<void>
     `);
 
     if ((usernameColumnCheck[0] as any[]).length === 0) {
-      // 添加username字段
-      await connection.execute(`
-        ALTER TABLE users 
-        ADD COLUMN username VARCHAR(50) UNIQUE NULL COMMENT '用户名，微信用户为空' 
-        AFTER unionid
-      `);
-      
-      // 添加username索引
-      await connection.execute(`
-        ALTER TABLE users 
-        ADD INDEX idx_username (username)
-      `);
-      
-      logger.info('已添加username字段和索引');
+      // 添加 username 字段（优先加 UNIQUE；如果命中 MySQL 64 keys 上限，则降级为普通字段）
+      try {
+        await connection.execute(`
+          ALTER TABLE users 
+          ADD COLUMN username VARCHAR(50) UNIQUE NULL COMMENT '用户名，微信用户为空' 
+          AFTER unionid
+        `);
+        logger.info('已添加 username 字段');
+      } catch (err: any) {
+        const msg = String(err?.message || '');
+        if (err?.code === 'ER_TOO_MANY_KEYS' || msg.includes('Too many keys')) {
+          logger.warn('users 表索引数量已达上限，username UNIQUE 创建失败，将降级为非唯一字段（建议后续清理冗余索引）');
+          await connection.execute(`
+            ALTER TABLE users 
+            ADD COLUMN username VARCHAR(50) NULL COMMENT '用户名，微信用户为空' 
+            AFTER unionid
+          `);
+          logger.info('已添加 username 字段（非唯一）');
+        } else {
+          throw err;
+        }
+      }
     }
 
     // 检查password字段是否存在

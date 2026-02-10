@@ -32,7 +32,7 @@ COPY src ./src
 # 构建 TypeScript（自动运行 tsc-alias）
 RUN npm run build && \
     echo "✅ 编译完成，验证路径别名解析..." && \
-    (grep -r "require('@/" dist/ && echo "❌ 发现未解析的路径别名" && exit 1 || echo "✅ 路径别名已全部解析")
+    (grep -r "@/" dist/ && echo "❌ 发现未解析的路径别名" && exit 1 || echo "✅ 路径别名已全部解析")
 
 # 清理开发依赖，只保留生产依赖
 # 注意：tsc-alias 已经解析了路径别名，不再需要 tsconfig-paths
