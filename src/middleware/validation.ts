@@ -307,6 +307,205 @@ export const validationSchemas = {
     }),
   },
 
+  essayOrgIdParam: {
+    params: Joi.object({
+      orgId: Joi.number().integer().positive().required().messages({
+        'number.base': 'orgId 必须是数字',
+        'number.integer': 'orgId 必须是整数',
+        'number.positive': 'orgId 必须是正数',
+        'any.required': 'orgId 是必需的',
+      }),
+    }),
+  },
+
+  essayIdParam: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'id 必须是数字',
+        'number.integer': 'id 必须是整数',
+        'number.positive': 'id 必须是正数',
+        'any.required': 'id 是必需的',
+      }),
+    }),
+  },
+
+  essayOrgListQuery: {
+    query: Joi.object({
+      includeDisabled: Joi.string().valid('0', '1').optional(),
+    }),
+  },
+
+  essayOrgCreate: {
+    body: Joi.object({
+      name: Joi.string().max(120).required().messages({
+        'string.empty': '机构名称不能为空',
+        'string.max': '机构名称不能超过120个字符',
+        'any.required': '机构名称是必需的',
+      }),
+      description: Joi.string().max(1000).allow('', null).optional().messages({
+        'string.max': '机构描述不能超过1000个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+      sort_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '排序必须是数字',
+        'number.integer': '排序必须是整数',
+        'number.min': '排序不能小于0',
+      }),
+    }),
+  },
+
+  essayOrgUpdate: {
+    params: Joi.object({
+      orgId: Joi.number().integer().positive().required().messages({
+        'number.base': 'orgId 必须是数字',
+        'number.integer': 'orgId 必须是整数',
+        'number.positive': 'orgId 必须是正数',
+        'any.required': 'orgId 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      name: Joi.string().max(120).optional().messages({
+        'string.max': '机构名称不能超过120个字符',
+      }),
+      description: Joi.string().max(1000).allow('', null).optional().messages({
+        'string.max': '机构描述不能超过1000个字符',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+      sort_order: Joi.number().integer().min(0).optional().messages({
+        'number.base': '排序必须是数字',
+        'number.integer': '排序必须是整数',
+        'number.min': '排序不能小于0',
+      }),
+    })
+      .min(1)
+      .messages({
+        'object.min': '至少提供一个需要更新的字段',
+      }),
+  },
+
+  adminEssayListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(100).default(20),
+      orgId: Joi.number().integer().positive().optional(),
+      subjectId: Joi.number().integer().positive().optional(),
+      subjectChapterId: Joi.number().integer().positive().optional(),
+      status: Joi.number().integer().valid(0, 1).optional(),
+      keyword: Joi.string().max(255).allow('').optional(),
+    }),
+  },
+
+  adminEssayCreate: {
+    body: Joi.object({
+      title: Joi.string().max(255).required().messages({
+        'string.empty': '论文标题不能为空',
+        'string.max': '论文标题不能超过255个字符',
+        'any.required': '论文标题是必需的',
+      }),
+      orgId: Joi.number().integer().positive().required().messages({
+        'number.base': 'orgId 必须是数字',
+        'number.integer': 'orgId 必须是整数',
+        'number.positive': 'orgId 必须是正数',
+        'any.required': 'orgId 是必需的',
+      }),
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      subjectChapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectChapterId 必须是数字',
+        'number.integer': 'subjectChapterId 必须是整数',
+        'number.positive': 'subjectChapterId 必须是正数',
+        'any.required': 'subjectChapterId 是必需的',
+      }),
+      status: Joi.number().integer().valid(0, 1).optional().messages({
+        'number.base': '状态必须是数字',
+        'any.only': '状态仅支持0或1',
+      }),
+    }),
+  },
+
+  adminEssayUpdate: {
+    params: Joi.object({
+      id: Joi.number().integer().positive().required().messages({
+        'number.base': 'id 必须是数字',
+        'number.integer': 'id 必须是整数',
+        'number.positive': 'id 必须是正数',
+        'any.required': 'id 是必需的',
+      }),
+    }),
+    body: Joi.object({
+      title: Joi.string().max(255).optional(),
+      orgId: Joi.number().integer().positive().optional(),
+      subjectId: Joi.number().integer().positive().optional(),
+      subjectChapterId: Joi.number().integer().positive().optional(),
+      status: Joi.number().integer().valid(0, 1).optional(),
+    }).unknown(true),
+  },
+
+  subjectEssayOrgQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+  },
+
+  subjectChapterEssayListQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      chapterId: Joi.number().integer().positive().required().messages({
+        'number.base': 'chapterId 必须是数字',
+        'number.integer': 'chapterId 必须是整数',
+        'number.positive': 'chapterId 必须是正数',
+        'any.required': 'chapterId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      orgId: Joi.number().integer().positive().required().messages({
+        'number.base': 'orgId 必须是数字',
+        'number.integer': 'orgId 必须是整数',
+        'number.positive': 'orgId 必须是正数',
+        'any.required': 'orgId 是必需的',
+      }),
+    }),
+  },
+
+  subjectEssayListQuery: {
+    params: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+    query: Joi.object({
+      orgId: Joi.number().integer().positive().required().messages({
+        'number.base': 'orgId 必须是数字',
+        'number.integer': 'orgId 必须是整数',
+        'number.positive': 'orgId 必须是正数',
+        'any.required': 'orgId 是必需的',
+      }),
+    }),
+  },
+
   bankIdParam: {
     params: Joi.object({
       bankId: Joi.number().integer().positive().required().messages({

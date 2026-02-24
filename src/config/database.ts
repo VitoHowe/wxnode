@@ -262,6 +262,54 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='科目章节别名表'
     `);
 
+    // 创建论文机构表
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS essay_orgs (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        name VARCHAR(120) NOT NULL COMMENT '机构名称',
+        description TEXT NULL COMMENT '机构描述',
+        status TINYINT NOT NULL DEFAULT 1 COMMENT '1:active 0:disabled',
+        sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_essay_org_name (name),
+        INDEX idx_essay_org_status (status),
+        INDEX idx_essay_org_sort (sort_order)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='论文机构表'
+    `);
+
+    // 创建论文表（单篇绑定一个科目章节）
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS essays (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        title VARCHAR(255) NOT NULL COMMENT '论文标题',
+        org_id INT NOT NULL COMMENT '机构ID',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        subject_chapter_id INT NOT NULL COMMENT '科目章节ID',
+        file_path VARCHAR(500) NOT NULL COMMENT '论文文件路径',
+        file_size BIGINT NULL COMMENT '文件大小(字节)',
+        status TINYINT NOT NULL DEFAULT 1 COMMENT '1:active 0:disabled',
+        created_by INT NULL COMMENT '创建人',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        INDEX idx_essays_org_id (org_id),
+        INDEX idx_essays_subject_id (subject_id),
+        INDEX idx_essays_subject_chapter_id (subject_chapter_id),
+        INDEX idx_essays_status (status),
+        CONSTRAINT fk_essays_org FOREIGN KEY (org_id)
+          REFERENCES essay_orgs(id) ON DELETE RESTRICT,
+        CONSTRAINT fk_essays_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_essays_subject_chapter FOREIGN KEY (subject_chapter_id)
+          REFERENCES subject_chapters(id) ON DELETE CASCADE,
+        CONSTRAINT fk_essays_created_by FOREIGN KEY (created_by)
+          REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='论文表'
+    `);
+    await migrateEssayTables(connection);
+
     // 创建题库章节表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS question_chapters (
@@ -873,6 +921,141 @@ const migrateQuestionChaptersTable = async (connection: mysql.PoolConnection): P
     }
   } catch (error) {
     logger.error('题库章节表迁移失败:', error);
+  }
+};
+
+/**
+ * 迁移论文机构与论文表
+ */
+const migrateEssayTables = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    // essay_orgs 字段补齐
+    if (!(await columnExists(connection, 'essay_orgs', 'description'))) {
+      await connection.execute(`
+        ALTER TABLE essay_orgs
+        ADD COLUMN description TEXT NULL COMMENT '机构描述'
+        AFTER name
+      `);
+    }
+
+    if (!(await columnExists(connection, 'essay_orgs', 'status'))) {
+      await connection.execute(`
+        ALTER TABLE essay_orgs
+        ADD COLUMN status TINYINT NOT NULL DEFAULT 1 COMMENT '1:active 0:disabled'
+        AFTER description
+      `);
+    }
+
+    if (!(await columnExists(connection, 'essay_orgs', 'sort_order'))) {
+      await connection.execute(`
+        ALTER TABLE essay_orgs
+        ADD COLUMN sort_order INT NOT NULL DEFAULT 0 COMMENT '排序'
+        AFTER status
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_orgs', 'idx_essay_org_status'))) {
+      await connection.execute(`
+        ALTER TABLE essay_orgs
+        ADD INDEX idx_essay_org_status (status)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_orgs', 'idx_essay_org_sort'))) {
+      await connection.execute(`
+        ALTER TABLE essay_orgs
+        ADD INDEX idx_essay_org_sort (sort_order)
+      `);
+    }
+
+    // essays 字段补齐
+    if (!(await columnExists(connection, 'essays', 'file_size'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD COLUMN file_size BIGINT NULL COMMENT '文件大小(字节)'
+        AFTER file_path
+      `);
+    }
+
+    if (!(await columnExists(connection, 'essays', 'status'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD COLUMN status TINYINT NOT NULL DEFAULT 1 COMMENT '1:active 0:disabled'
+        AFTER file_size
+      `);
+    }
+
+    if (!(await columnExists(connection, 'essays', 'created_by'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD COLUMN created_by INT NULL COMMENT '创建人'
+        AFTER status
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essays', 'idx_essays_org_id'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD INDEX idx_essays_org_id (org_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essays', 'idx_essays_subject_id'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD INDEX idx_essays_subject_id (subject_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essays', 'idx_essays_subject_chapter_id'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD INDEX idx_essays_subject_chapter_id (subject_chapter_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essays', 'idx_essays_status'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD INDEX idx_essays_status (status)
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essays', 'fk_essays_org'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD CONSTRAINT fk_essays_org
+        FOREIGN KEY (org_id) REFERENCES essay_orgs(id) ON DELETE RESTRICT
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essays', 'fk_essays_subject'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD CONSTRAINT fk_essays_subject
+        FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essays', 'fk_essays_subject_chapter'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD CONSTRAINT fk_essays_subject_chapter
+        FOREIGN KEY (subject_chapter_id) REFERENCES subject_chapters(id) ON DELETE CASCADE
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essays', 'fk_essays_created_by'))) {
+      await connection.execute(`
+        ALTER TABLE essays
+        ADD CONSTRAINT fk_essays_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      `);
+    }
+
+    logger.info('论文机构与论文表迁移完成');
+  } catch (error) {
+    logger.error('论文机构与论文表迁移失败:', error);
   }
 };
 

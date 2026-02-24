@@ -26,6 +26,8 @@ import adminQuestionBankRoutes from '@/routes/adminQuestionBanks';
 import realExamRoutes from '@/routes/realExams';
 import markdownFileRoutes from '@/routes/markdownFiles';
 import practiceRoutes from '@/routes/practice';
+import adminEssayRoutes from '@/routes/adminEssays';
+import essayRoutes from '@/routes/essays';
 
 // 加载环境变量
 // 优先加载 .env 文件（Docker 环境），如果不存在则尝试加载 .process 文件（本地开发环境）
@@ -61,6 +63,13 @@ app.use('/api/question-banks/:bankId/images', (req, res, next) => {
 app.use('/api/markdown-files/:fileId', (req, res, next) => {
   const fileId = req.params.fileId;
   const publicPath = path.join(process.cwd(), 'public', 'markdown-docs', fileId);
+  express.static(publicPath)(req, res, next);
+});
+
+// 静态文件服务：论文 Markdown 文件
+app.use('/api/essays/:essayId', (req, res, next) => {
+  const essayId = req.params.essayId;
+  const publicPath = path.join(process.cwd(), 'public', 'question-banks', 'essays', essayId);
   express.static(publicPath)(req, res, next);
 });
 
@@ -108,6 +117,8 @@ const swaggerOptions = {
     path.join(__dirname, 'routes/adminQuestionBanks.ts'),
     path.join(__dirname, 'routes/realExams.ts'),
     path.join(__dirname, 'routes/markdownFiles.ts'),
+    path.join(__dirname, 'routes/adminEssays.ts'),
+    path.join(__dirname, 'routes/essays.ts'),
   ], // API路由文件路径
 };
 
@@ -135,6 +146,8 @@ app.use('/api/admin/question-banks', adminQuestionBankRoutes);
 app.use('/api/real-exams', realExamRoutes);
 app.use('/api/admin/markdown-files', markdownFileRoutes);
 app.use('/api/practice', practiceRoutes);
+app.use('/api/admin', adminEssayRoutes);
+app.use('/api', essayRoutes);
 
 // 错误处理中间件
 app.use(notFoundHandler);
