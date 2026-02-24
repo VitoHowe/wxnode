@@ -3,6 +3,7 @@ import path from 'path';
 import { getPool, query } from '@/config/database';
 import { ConflictError, NotFoundError, ValidationError } from '@/middleware/errorHandler';
 import { logger } from '@/utils/logger';
+import { getEssayStorageDir } from '@/utils/essayStorage';
 
 export interface EssayOrgRecord {
   id: number;
@@ -89,7 +90,7 @@ interface ListEssayPermissionUsersParams {
 
 class AdminEssayService {
   private getEssayDir(essayId: number): string {
-    return path.join(process.cwd(), 'public', 'question-banks', 'essays', String(essayId));
+    return getEssayStorageDir(essayId);
   }
 
   private getEssaySourcePath(essayId: number): string {
@@ -436,12 +437,42 @@ class AdminEssayService {
       throw new NotFoundError('机构不存在');
     }
 
-    const refRows = await query(`SELECT COUNT(*) AS total FROM essays WHERE org_id = ?`, [orgId]);
-    if (Number(refRows[0].total) > 0) {
-      throw new ConflictError('该机构下存在论文，无法删除');
+    const essayRows = await query(`SELECT id, file_path FROM essays WHERE org_id = ?`, [orgId]);
+    const cleanupDirs = new Set<string>();
+    for (const row of essayRows as any[]) {
+      const essayId = Number(row.id);
+      if (Number.isFinite(essayId) && essayId > 0) {
+        cleanupDirs.add(this.getEssayDir(essayId));
+      }
+      if (row.file_path) {
+        cleanupDirs.add(path.dirname(String(row.file_path)));
+      }
     }
 
-    await query(`DELETE FROM essay_orgs WHERE id = ?`, [orgId]);
+    const connection = await getPool().getConnection();
+    try {
+      await connection.beginTransaction();
+      await connection.execute(`DELETE FROM essays WHERE org_id = ?`, [orgId]);
+      await connection.execute(`DELETE FROM essay_orgs WHERE id = ?`, [orgId]);
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      logger.error('删除机构失败:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    for (const dirPath of cleanupDirs) {
+      if (!dirPath || !fs.existsSync(dirPath)) {
+        continue;
+      }
+      try {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+      } catch (error) {
+        logger.warn(`删除论文目录失败: ${dirPath}`, error);
+      }
+    }
   }
 
   async listEssays(params: ListEssayParams): Promise<{ list: EssayRecord[]; total: number; pagination: any }> {

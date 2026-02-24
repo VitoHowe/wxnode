@@ -1,20 +1,20 @@
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
 import { adminEssayController } from '@/controllers/adminEssayController';
 import { authenticateToken, requireAdmin } from '@/middleware/auth';
 import { validateRequest, validationSchemas } from '@/middleware/validation';
+import { getEssayTempUploadDir } from '@/utils/essayStorage';
 
 const router = Router();
 
-const tempUploadDir = path.join(process.cwd(), 'public', 'question-banks', 'essays', 'tmp');
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
-    if (!fs.existsSync(tempUploadDir)) {
-      fs.mkdirSync(tempUploadDir, { recursive: true });
+    try {
+      cb(null, getEssayTempUploadDir());
+    } catch (error) {
+      cb(error as Error, '');
     }
-    cb(null, tempUploadDir);
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();

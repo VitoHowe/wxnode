@@ -38,6 +38,7 @@ services:
       
       # 文件上传配置
       UPLOAD_PATH: ${UPLOAD_PATH:-./uploads}
+      ESSAY_STORAGE_PATH: ${ESSAY_STORAGE_PATH:-/app/uploads/question-banks/essays}
       MAX_FILE_SIZE: ${MAX_FILE_SIZE:-50MB}
       
       # 解析服务配置
