@@ -310,6 +310,30 @@ const createTables = async (connection: mysql.PoolConnection): Promise<void> => 
     `);
     await migrateEssayTables(connection);
 
+    // 创建论文可见权限表（按科目授权用户）
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS essay_subject_permissions (
+        id INT NOT NULL AUTO_INCREMENT COMMENT '主键',
+        subject_id INT NOT NULL COMMENT '科目ID',
+        user_id INT NOT NULL COMMENT '用户ID',
+        created_by INT NULL COMMENT '配置人',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_essay_permission_subject_user (subject_id, user_id),
+        INDEX idx_essay_permission_subject (subject_id),
+        INDEX idx_essay_permission_user (user_id),
+        INDEX idx_essay_permission_created_by (created_by),
+        CONSTRAINT fk_essay_permission_subject FOREIGN KEY (subject_id)
+          REFERENCES subjects(id) ON DELETE CASCADE,
+        CONSTRAINT fk_essay_permission_user FOREIGN KEY (user_id)
+          REFERENCES users(id) ON DELETE CASCADE,
+        CONSTRAINT fk_essay_permission_created_by FOREIGN KEY (created_by)
+          REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='论文科目权限表'
+    `);
+    await migrateEssayPermissionTables(connection);
+
     // 创建题库章节表
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS question_chapters (
@@ -1056,6 +1080,77 @@ const migrateEssayTables = async (connection: mysql.PoolConnection): Promise<voi
     logger.info('论文机构与论文表迁移完成');
   } catch (error) {
     logger.error('论文机构与论文表迁移失败:', error);
+  }
+};
+
+/**
+ * 迁移论文权限表
+ */
+const migrateEssayPermissionTables = async (connection: mysql.PoolConnection): Promise<void> => {
+  try {
+    if (!(await columnExists(connection, 'essay_subject_permissions', 'created_by'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD COLUMN created_by INT NULL COMMENT '配置人'
+        AFTER user_id
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_subject_permissions', 'uk_essay_permission_subject_user'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD UNIQUE KEY uk_essay_permission_subject_user (subject_id, user_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_subject_permissions', 'idx_essay_permission_subject'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD INDEX idx_essay_permission_subject (subject_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_subject_permissions', 'idx_essay_permission_user'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD INDEX idx_essay_permission_user (user_id)
+      `);
+    }
+
+    if (!(await indexExists(connection, 'essay_subject_permissions', 'idx_essay_permission_created_by'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD INDEX idx_essay_permission_created_by (created_by)
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essay_subject_permissions', 'fk_essay_permission_subject'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD CONSTRAINT fk_essay_permission_subject
+        FOREIGN KEY (subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essay_subject_permissions', 'fk_essay_permission_user'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD CONSTRAINT fk_essay_permission_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      `);
+    }
+
+    if (!(await foreignKeyExists(connection, 'essay_subject_permissions', 'fk_essay_permission_created_by'))) {
+      await connection.execute(`
+        ALTER TABLE essay_subject_permissions
+        ADD CONSTRAINT fk_essay_permission_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      `);
+    }
+
+    logger.info('论文权限表迁移完成');
+  } catch (error) {
+    logger.error('论文权限表迁移失败:', error);
   }
 };
 

@@ -401,6 +401,40 @@ export const validationSchemas = {
     }),
   },
 
+  adminEssayPermissionUserListQuery: {
+    query: Joi.object({
+      page: Joi.number().integer().min(1).default(1),
+      limit: Joi.number().integer().min(1).max(200).default(50),
+      keyword: Joi.string().max(100).allow('').optional(),
+      includeDisabled: Joi.string().valid('0', '1').optional(),
+    }),
+  },
+
+  adminEssayPermissionQuery: {
+    query: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+    }),
+  },
+
+  adminEssayPermissionSave: {
+    body: Joi.object({
+      subjectId: Joi.number().integer().positive().required().messages({
+        'number.base': 'subjectId 必须是数字',
+        'number.integer': 'subjectId 必须是整数',
+        'number.positive': 'subjectId 必须是正数',
+        'any.required': 'subjectId 是必需的',
+      }),
+      userIds: Joi.array().items(Joi.number().integer().positive()).unique().default([]).messages({
+        'array.base': 'userIds 必须是数组',
+      }),
+    }),
+  },
+
   adminEssayCreate: {
     body: Joi.object({
       title: Joi.string().max(255).required().messages({

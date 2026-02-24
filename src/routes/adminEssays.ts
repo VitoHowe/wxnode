@@ -62,6 +62,22 @@ router.delete(
   adminEssayController.deleteEssayOrg
 );
 
+router.get(
+  '/essay-permission-users',
+  validateRequest(validationSchemas.adminEssayPermissionUserListQuery),
+  adminEssayController.listEssayPermissionUsers
+);
+router.get(
+  '/essay-permissions',
+  validateRequest(validationSchemas.adminEssayPermissionQuery),
+  adminEssayController.getSubjectEssayPermission
+);
+router.put(
+  '/essay-permissions',
+  validateRequest(validationSchemas.adminEssayPermissionSave),
+  adminEssayController.saveSubjectEssayPermission
+);
+
 router.get('/essays', validateRequest(validationSchemas.adminEssayListQuery), adminEssayController.listEssays);
 router.post(
   '/essays',

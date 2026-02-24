@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { query } from '@/config/database';
+import { getPool, query } from '@/config/database';
 import { ConflictError, NotFoundError, ValidationError } from '@/middleware/errorHandler';
 import { logger } from '@/utils/logger';
 
@@ -34,6 +34,22 @@ export interface EssayRecord {
   content_url?: string;
 }
 
+export interface EssayPermissionUser {
+  id: number;
+  nickname?: string | null;
+  username?: string | null;
+  phone?: string | null;
+  status: number;
+  role_name?: string | null;
+}
+
+export interface SubjectEssayPermission {
+  subject_id: number;
+  user_ids: number[];
+  users: EssayPermissionUser[];
+  updated_at?: string | null;
+}
+
 interface ListEssayParams {
   page: number;
   limit: number;
@@ -62,6 +78,13 @@ interface UpdateEssayParams {
   subjectChapterId?: number;
   status?: number;
   file?: Express.Multer.File;
+}
+
+interface ListEssayPermissionUsersParams {
+  page: number;
+  limit: number;
+  keyword?: string;
+  includeDisabled?: boolean;
 }
 
 class AdminEssayService {
@@ -161,6 +184,166 @@ class AdminEssayService {
     );
 
     return rows as EssayOrgRecord[];
+  }
+
+  async listEssayPermissionUsers(params: ListEssayPermissionUsersParams): Promise<{
+    list: EssayPermissionUser[];
+    total: number;
+    pagination: { page: number; limit: number; total: number; totalPages: number };
+  }> {
+    const page = Math.max(1, Number(params.page || 1));
+    const limit = Math.min(200, Math.max(1, Number(params.limit || 20)));
+    const offset = (page - 1) * limit;
+
+    const whereConditions: string[] = [];
+    const values: any[] = [];
+
+    if (!params.includeDisabled) {
+      whereConditions.push('u.status = 1');
+    }
+
+    if (params.keyword) {
+      whereConditions.push('(u.nickname LIKE ? OR u.username LIKE ? OR u.phone LIKE ?)');
+      values.push(`%${params.keyword}%`, `%${params.keyword}%`, `%${params.keyword}%`);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const countRows = await query(`SELECT COUNT(*) AS total FROM users u ${whereClause}`, values);
+    const total = Number(countRows[0]?.total || 0);
+
+    const rows = await query(
+      `
+        SELECT
+          u.id,
+          u.nickname,
+          u.username,
+          u.phone,
+          u.status,
+          r.name AS role_name
+        FROM users u
+        LEFT JOIN roles r ON r.id = u.role_id
+        ${whereClause}
+        ORDER BY u.updated_at DESC, u.id DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `,
+      values
+    );
+
+    return {
+      list: (rows as any[]).map((row) => ({
+        id: Number(row.id),
+        nickname: row.nickname,
+        username: row.username,
+        phone: row.phone,
+        status: Number(row.status),
+        role_name: row.role_name,
+      })),
+      total,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async getSubjectEssayPermission(subjectId: number): Promise<SubjectEssayPermission> {
+    await this.ensureSubjectExists(subjectId);
+
+    const rows = await query(
+      `
+        SELECT
+          p.user_id,
+          p.updated_at,
+          u.nickname,
+          u.username,
+          u.phone,
+          u.status,
+          r.name AS role_name
+        FROM essay_subject_permissions p
+        LEFT JOIN users u ON u.id = p.user_id
+        LEFT JOIN roles r ON r.id = u.role_id
+        WHERE p.subject_id = ?
+        ORDER BY p.updated_at DESC, p.id DESC
+      `,
+      [subjectId]
+    );
+
+    const userIds = (rows as any[]).map((row) => Number(row.user_id));
+    const users = (rows as any[]).map((row) => ({
+      id: Number(row.user_id),
+      nickname: row.nickname,
+      username: row.username,
+      phone: row.phone,
+      status: Number(row.status),
+      role_name: row.role_name,
+    }));
+
+    return {
+      subject_id: subjectId,
+      user_ids: Array.from(new Set(userIds)),
+      users,
+      updated_at: rows.length > 0 ? rows[0].updated_at : null,
+    };
+  }
+
+  async saveSubjectEssayPermission(
+    subjectId: number,
+    userIds: number[],
+    updatedBy: number
+  ): Promise<SubjectEssayPermission> {
+    await this.ensureSubjectExists(subjectId);
+
+    const normalizedUserIds = Array.from(
+      new Set((userIds || []).map((id) => Number(id)).filter((id) => Number.isInteger(id) && id > 0))
+    );
+
+    if (normalizedUserIds.length > 0) {
+      const userPlaceholders = normalizedUserIds.map(() => '?').join(',');
+      const existedUsers = await query(
+        `SELECT id FROM users WHERE id IN (${userPlaceholders})`,
+        normalizedUserIds
+      );
+
+      const existedUserIds = new Set((existedUsers as any[]).map((row) => Number(row.id)));
+      const missingUsers = normalizedUserIds.filter((id) => !existedUserIds.has(id));
+      if (missingUsers.length > 0) {
+        throw new ValidationError(`以下用户不存在：${missingUsers.join(', ')}`);
+      }
+    }
+
+    const connection = await getPool().getConnection();
+    try {
+      await connection.beginTransaction();
+
+      await connection.execute(`DELETE FROM essay_subject_permissions WHERE subject_id = ?`, [subjectId]);
+
+      if (normalizedUserIds.length > 0) {
+        const insertPlaceholders = normalizedUserIds.map(() => '(?, ?, ?, NOW(), NOW())').join(', ');
+        const insertValues: number[] = [];
+        normalizedUserIds.forEach((userId) => {
+          insertValues.push(subjectId, userId, updatedBy);
+        });
+        await connection.execute(
+          `
+            INSERT INTO essay_subject_permissions (subject_id, user_id, created_by, created_at, updated_at)
+            VALUES ${insertPlaceholders}
+          `,
+          insertValues
+        );
+      }
+
+      await connection.commit();
+    } catch (error) {
+      await connection.rollback();
+      logger.error('保存论文权限失败:', error);
+      throw error;
+    } finally {
+      connection.release();
+    }
+
+    return this.getSubjectEssayPermission(subjectId);
   }
 
   async createEssayOrg(payload: {

@@ -42,10 +42,32 @@ class EssayService {
     return `/api/essays/${essayId}/source.md`;
   }
 
-  async listSubjectEssayOrgs(subjectId: number): Promise<EssayOrgOption[]> {
+  private async ensureSubjectExists(subjectId: number): Promise<void> {
     const subjectRows = await query(`SELECT id FROM subjects WHERE id = ? LIMIT 1`, [subjectId]);
     if (subjectRows.length === 0) {
       throw new NotFoundError('科目不存在');
+    }
+  }
+
+  private async hasSubjectPermission(userId: number, subjectId: number): Promise<boolean> {
+    const rows = await query(
+      `
+        SELECT 1
+        FROM essay_subject_permissions
+        WHERE subject_id = ? AND user_id = ?
+        LIMIT 1
+      `,
+      [subjectId, userId]
+    );
+    return rows.length > 0;
+  }
+
+  async listSubjectEssayOrgs(subjectId: number, userId: number): Promise<EssayOrgOption[]> {
+    await this.ensureSubjectExists(subjectId);
+
+    const permitted = await this.hasSubjectPermission(userId, subjectId);
+    if (!permitted) {
+      return [];
     }
 
     const rows = await query(
@@ -76,7 +98,19 @@ class EssayService {
     }));
   }
 
-  async listChapterEssays(subjectId: number, chapterId: number, orgId: number): Promise<EssayListItem[]> {
+  async listChapterEssays(
+    subjectId: number,
+    chapterId: number,
+    orgId: number,
+    userId: number
+  ): Promise<EssayListItem[]> {
+    await this.ensureSubjectExists(subjectId);
+
+    const permitted = await this.hasSubjectPermission(userId, subjectId);
+    if (!permitted) {
+      return [];
+    }
+
     const chapterRows = await query(
       `SELECT id, subject_id FROM subject_chapters WHERE id = ? LIMIT 1`,
       [chapterId]
@@ -97,7 +131,7 @@ class EssayService {
           o.name AS org_name,
           e.subject_id,
           e.subject_chapter_id,
-          sc.chapter_name AS subject_chapter_name,
+          COALESCE(sc.display_name, sc.chapter_name) AS subject_chapter_name,
           e.updated_at
         FROM essays e
         INNER JOIN essay_orgs o ON o.id = e.org_id
@@ -125,10 +159,12 @@ class EssayService {
     }));
   }
 
-  async listSubjectEssays(subjectId: number, orgId: number): Promise<EssayListItem[]> {
-    const subjectRows = await query(`SELECT id FROM subjects WHERE id = ? LIMIT 1`, [subjectId]);
-    if (subjectRows.length === 0) {
-      throw new NotFoundError('科目不存在');
+  async listSubjectEssays(subjectId: number, orgId: number, userId: number): Promise<EssayListItem[]> {
+    await this.ensureSubjectExists(subjectId);
+
+    const permitted = await this.hasSubjectPermission(userId, subjectId);
+    if (!permitted) {
+      return [];
     }
 
     const rows = await query(
@@ -167,14 +203,14 @@ class EssayService {
     }));
   }
 
-  async getEssayDetail(id: number): Promise<EssayDetail> {
+  async getEssayDetail(id: number, userId: number): Promise<EssayDetail> {
     const rows = await query(
       `
         SELECT
           e.*,
           o.name AS org_name,
           s.name AS subject_name,
-          sc.chapter_name AS subject_chapter_name
+          COALESCE(sc.display_name, sc.chapter_name) AS subject_chapter_name
         FROM essays e
         LEFT JOIN essay_orgs o ON o.id = e.org_id
         LEFT JOIN subjects s ON s.id = e.subject_id
@@ -190,6 +226,11 @@ class EssayService {
     }
 
     const essay = rows[0] as any;
+    const permitted = await this.hasSubjectPermission(userId, Number(essay.subject_id));
+    if (!permitted) {
+      throw new NotFoundError('论文不存在');
+    }
+
     return {
       id: Number(essay.id),
       title: essay.title,
@@ -205,6 +246,34 @@ class EssayService {
       created_at: essay.created_at,
       updated_at: essay.updated_at,
     };
+  }
+
+  async getEssaySourcePath(id: number, userId: number): Promise<string> {
+    const rows = await query(
+      `
+        SELECT id, subject_id, file_path
+        FROM essays
+        WHERE id = ? AND status = 1
+        LIMIT 1
+      `,
+      [id]
+    );
+
+    if (rows.length === 0) {
+      throw new NotFoundError('论文不存在');
+    }
+
+    const essay = rows[0] as any;
+    const permitted = await this.hasSubjectPermission(userId, Number(essay.subject_id));
+    if (!permitted) {
+      throw new NotFoundError('论文不存在');
+    }
+
+    if (!essay.file_path) {
+      throw new NotFoundError('论文原文不存在');
+    }
+
+    return String(essay.file_path);
   }
 }
 

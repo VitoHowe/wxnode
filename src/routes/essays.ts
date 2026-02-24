@@ -26,5 +26,6 @@ router.get(
 );
 
 router.get('/essays/:id', validateRequest(validationSchemas.essayIdParam), essayController.getEssayDetail);
+router.get('/essays/:id/source.md', validateRequest(validationSchemas.essayIdParam), essayController.getEssaySource);
 
 export default router;

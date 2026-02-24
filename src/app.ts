@@ -66,13 +66,6 @@ app.use('/api/markdown-files/:fileId', (req, res, next) => {
   express.static(publicPath)(req, res, next);
 });
 
-// 静态文件服务：论文 Markdown 文件
-app.use('/api/essays/:essayId', (req, res, next) => {
-  const essayId = req.params.essayId;
-  const publicPath = path.join(process.cwd(), 'public', 'question-banks', 'essays', essayId);
-  express.static(publicPath)(req, res, next);
-});
-
 // 全局 API 限流
 app.use('/api', apiRateLimiter);
 
