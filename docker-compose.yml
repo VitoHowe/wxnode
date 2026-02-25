@@ -7,6 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: wxnode-app
+    # 线上挂载目录权限不可控时，先用 root 运行保证上传与落盘可用
+    user: "0:0"
     restart: unless-stopped
     ports:
       - "${HOST_PORT:-3006}:3006"

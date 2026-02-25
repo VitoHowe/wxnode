@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# 预创建运行期目录，避免首次上传时目录不存在
+mkdir -p /app/uploads /app/logs /app/public/question-banks/essays/tmp
+
 # 等待 MySQL 数据库就绪
 echo "等待 MySQL 数据库就绪..."
 max_attempts=30
