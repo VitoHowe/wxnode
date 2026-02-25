@@ -52,16 +52,18 @@ const parseTrustProxyConfig = (
   }
 
   const normalized = raw.toLowerCase();
-  if (['true', '1', 'yes', 'on'].includes(normalized)) {
-    return true;
-  }
-  if (['false', '0', 'no', 'off'].includes(normalized)) {
-    return false;
-  }
-
+  // 优先按数字解析，避免 "1" 被识别成 true 触发 express-rate-limit 校验异常
   const maybeNumber = Number(raw);
   if (Number.isInteger(maybeNumber) && maybeNumber >= 0) {
     return maybeNumber;
+  }
+
+  // "true/yes/on" 收敛成 1（信任 1 跳代理），不要返回 boolean true
+  if (['true', 'yes', 'on'].includes(normalized)) {
+    return 1;
+  }
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
   }
 
   // 支持 Express 的字符串模式，例如 "loopback, linklocal, uniquelocal"
