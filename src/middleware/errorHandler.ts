@@ -97,7 +97,7 @@ export const errorHandler = (
 
   // 记录错误日志
   if (statusCode >= 500) {
-    logger.error('服务器错误:', {
+    logger.error(`服务器错误: ${error.message}`, {
       error: error.message,
       stack: error.stack,
       url: req.url,

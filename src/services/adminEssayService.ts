@@ -432,7 +432,7 @@ class AdminEssayService {
   }
 
   async deleteEssayOrg(orgId: number): Promise<void> {
-    const rows = await query(`SELECT id FROM essay_orgs WHERE id = ? LIMIT 1`, [orgId]);
+    const rows = await query(`SELECT id, name FROM essay_orgs WHERE id = ? LIMIT 1`, [orgId]);
     if (rows.length === 0) {
       throw new NotFoundError('机构不存在');
     }
@@ -442,10 +442,12 @@ class AdminEssayService {
     for (const row of essayRows as any[]) {
       const essayId = Number(row.id);
       if (Number.isFinite(essayId) && essayId > 0) {
-        cleanupDirs.add(this.getEssayDir(essayId));
+        // 兼容历史路径：旧版本论文默认存储在 public/question-banks/essays/{id}
+        cleanupDirs.add(path.join(process.cwd(), 'public', 'question-banks', 'essays', String(essayId)));
       }
       if (row.file_path) {
-        cleanupDirs.add(path.dirname(String(row.file_path)));
+        const filePath = String(row.file_path);
+        cleanupDirs.add(path.dirname(filePath));
       }
     }
 
@@ -457,7 +459,10 @@ class AdminEssayService {
       await connection.commit();
     } catch (error) {
       await connection.rollback();
-      logger.error('删除机构失败:', error);
+      const sqlError = error as any;
+      logger.error(
+        `删除机构失败: orgId=${orgId}, code=${sqlError?.code || 'UNKNOWN'}, message=${sqlError?.message || String(error)}`
+      );
       throw error;
     } finally {
       connection.release();

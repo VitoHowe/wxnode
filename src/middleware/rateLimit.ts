@@ -18,11 +18,39 @@ const buildHandler = (message: string) => {
     });
   };
 };
+
+const normalizeClientIp = (req: Request): string => {
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  if (typeof xForwardedFor === 'string' && xForwardedFor.trim()) {
+    const firstIp = xForwardedFor.split(',')[0]?.trim();
+    if (firstIp) {
+      return firstIp;
+    }
+  }
+
+  if (Array.isArray(xForwardedFor) && xForwardedFor.length > 0) {
+    const first = xForwardedFor[0]?.split(',')[0]?.trim();
+    if (first) {
+      return first;
+    }
+  }
+
+  const xRealIp = req.headers['x-real-ip'];
+  if (typeof xRealIp === 'string' && xRealIp.trim()) {
+    return xRealIp.trim();
+  }
+
+  return req.ip || req.socket.remoteAddress || 'unknown-ip';
+};
+
+const keyGenerator = (req: Request): string => normalizeClientIp(req);
 export const apiRateLimiter = rateLimit({
   windowMs,
   max,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
+  validate: false,
   handler: buildHandler('Too many requests. Please try again later.'),
 });
 
@@ -31,5 +59,7 @@ export const authRateLimiter = rateLimit({
   max: authMax,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator,
+  validate: false,
   handler: buildHandler('Too many auth requests. Please try again later.'),
 });
