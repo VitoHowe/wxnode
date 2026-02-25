@@ -43,6 +43,35 @@ if (fs.existsSync('.env')) {
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
+const parseTrustProxyConfig = (
+  value?: string
+): boolean | number | string => {
+  const raw = value?.trim();
+  if (!raw) {
+    return process.env.NODE_ENV === 'production' ? 1 : false;
+  }
+
+  const normalized = raw.toLowerCase();
+  if (['true', '1', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['false', '0', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  const maybeNumber = Number(raw);
+  if (Number.isInteger(maybeNumber) && maybeNumber >= 0) {
+    return maybeNumber;
+  }
+
+  // 支持 Express 的字符串模式，例如 "loopback, linklocal, uniquelocal"
+  return raw;
+};
+
+const trustProxy = parseTrustProxyConfig(process.env.TRUST_PROXY);
+app.set('trust proxy', trustProxy);
+logger.info(`[Proxy] trust proxy 已设置为: ${String(trustProxy)}`);
+
 // 中间件配置
 app.use(helmet({
   crossOriginResourcePolicy: false  // 允许跨域资源访问
