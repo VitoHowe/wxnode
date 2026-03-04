@@ -10,6 +10,8 @@ services:
     # 线上挂载目录权限不可控时，先用 root 运行保证上传与落盘可用
     user: "0:0"
     restart: unless-stopped
+    mem_limit: 2g
+    mem_reservation: 1g
     ports:
       - "${HOST_PORT:-3006}:3006"
     environment:
@@ -17,6 +19,7 @@ services:
       PORT: ${PORT:-3006}
       NODE_ENV: ${NODE_ENV:-production}
       TRUST_PROXY: ${TRUST_PROXY:-1}
+      NODE_OPTIONS: ${NODE_OPTIONS:---max-old-space-size=1024 --heapsnapshot-near-heap-limit=2}
       
       # 数据库配置（连接宿主机的 MySQL）
       DB_HOST: ${DB_HOST:-host.docker.internal}

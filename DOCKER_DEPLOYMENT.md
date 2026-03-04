@@ -89,6 +89,7 @@ docker-compose logs -f app
 |--------|------|--------|----------|
 | `PORT` | 应用端口 | 3000 | 否 |
 | `NODE_ENV` | 运行环境 | production | 否 |
+| `NODE_OPTIONS` | Node 运行参数（堆上限） | --max-old-space-size=1024 --heapsnapshot-near-heap-limit=2 | 否 |
 | `DB_HOST` | 数据库地址 | mysql | 否 |
 | `DB_PORT` | 数据库端口 | 3306 | 否 |
 | `DB_USER` | 数据库用户 | wxnode_user | 是 |
@@ -321,17 +322,15 @@ df -h
 
 **解决方案**：
 
-在 `docker-compose.yml` 中为服务设置内存限制：
+在 `docker-compose.yml` 中为服务设置内存限制和 Node 堆上限：
 
 ```yaml
 services:
   app:
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
+    mem_limit: 2g
+    mem_reservation: 1g
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1024 --heapsnapshot-near-heap-limit=2
 ```
 
 ## 生产环境建议
@@ -368,11 +367,11 @@ secrets:
 ```yaml
 services:
   app:
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
+    cpus: '2'
+    mem_limit: 2g
+    mem_reservation: 1g
+    environment:
+      NODE_OPTIONS: --max-old-space-size=1024 --heapsnapshot-near-heap-limit=2
 ```
 
 ### 性能优化
